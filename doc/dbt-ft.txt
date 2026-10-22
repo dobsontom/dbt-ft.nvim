@@ -57,9 +57,8 @@ A `.sql` file is a dbt model when a `dbt_project.yml` file sits in its
 directory or one above it. Models, macros, tests, snapshots, analyses, and
 packages under `dbt_packages/` are all `dbt`. dbt's compiled output under the
 project's `target/` stays `sql`, as does any `.sql` file outside a project.
-Only a file named `dbt_project.yml` counts, since compiled output holds a
-directory of that name. A buffer named by a URL, such as a `fugitive://` copy
-of a model, is judged by the path after the scheme.
+A buffer named by a URL, such as a `fugitive://` copy of a model, is judged by
+the path after the scheme.
 
 ==============================================================================
 4. BEHAVIOUR                                                *dbt-ft-behaviour*
@@ -108,8 +107,7 @@ whether the dbt language server's config covers the `dbt` filetype.
   `dbt`, such as Snacks', shows a model's Jinja highlighted but not its SQL,
   since only `dbt` buffers get the SQL.
 - A model is parsed in full when it opens, so its SQL folds are there from
-  the start. That parse, and the one after each edit, costs more on very
-  large models than plain SQL, since the SQL is parsed as one document.
-  Neovim re-parses after an edit in the background, in short slices.
+  the start. On very large models that parse, and the one after each edit,
+  cost more than for plain SQL, mostly in the Jinja parser.
 
  vim:tw=78:ts=8:noet:ft=help:norl:
