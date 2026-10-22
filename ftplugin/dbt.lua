@@ -20,3 +20,10 @@ local jinja = {
 }
 -- SQL's own words include a bare \<if\>, so Jinja's go first to win on a `{% if %}`.
 vim.b.match_words = table.concat(jinja, ",") .. (vim.b.match_words and "," .. vim.b.match_words or "")
+
+-- Tree-sitter folds only hear of changes to the root Jinja tree, so the SQL has to be parsed before
+-- they are first computed, or the model opens with its Jinja folds alone.
+local parser = vim.treesitter.get_parser(0, nil, { error = false })
+if parser then
+  parser:parse(true)
+end

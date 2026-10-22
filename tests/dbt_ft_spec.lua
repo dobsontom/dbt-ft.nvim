@@ -151,6 +151,19 @@ test("folds Jinja blocks and SQL statements", function()
   assert(vim.startswith(fold, ">"), "no fold starts at {% raw %}: " .. fold)
 end)
 
+test("has its SQL folds as soon as a model opens", function()
+  local buf = open("project/models/orders.sql")
+  vim.treesitter.start(buf)
+  vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+  vim.wo.foldmethod = "expr"
+  local row = row_of(buf, "select order_id, status")
+  local folded = vim.wait(2000, function()
+    return vim.fn.foldlevel(row) > 0
+  end, 20)
+  vim.wo.foldmethod = "manual"
+  assert(folded, "no fold holds the CTE's select")
+end)
+
 test("indents dbt buffers by SQL's rules and leaves other Jinja to autoindent", function()
   local ok, indent = pcall(require, "nvim-treesitter.indent")
   assert(ok, "nvim-treesitter's indent module is needed; set NVIM_TREESITTER")

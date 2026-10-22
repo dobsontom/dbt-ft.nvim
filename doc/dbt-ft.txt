@@ -107,8 +107,9 @@ whether the dbt language server's config covers the `dbt` filetype.
 - A picker preview that starts tree-sitter without setting 'filetype' to
   `dbt`, such as Snacks', shows a model's Jinja highlighted but not its SQL,
   since only `dbt` buffers get the SQL.
-- On very large models each edit costs more to re-parse than plain SQL,
-  since the SQL is parsed as one document. Neovim parses in the background
-  in short slices.
+- A model is parsed in full when it opens, so its SQL folds are there from
+  the start. That parse, and the one after each edit, costs more on very
+  large models than plain SQL, since the SQL is parsed as one document.
+  Neovim re-parses after an edit in the background, in short slices.
 
  vim:tw=78:ts=8:noet:ft=help:norl:
