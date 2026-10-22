@@ -7,7 +7,7 @@ on:
   schedule:
     # Weekly, so a new Jinja or SQL grammar that breaks the queries fails here
     # before users hit it.
-    - cron: "0 6 * * 1"
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 concurrency:
@@ -42,6 +42,9 @@ jobs:
 
       - name: Run ShellCheck
         run: shellcheck scripts/test
+
+      - name: Run oxfmt
+        run: npx --yes oxfmt@0.72.0 --check
 
   test:
     name: Test on Neovim ${{ matrix.nvim }}

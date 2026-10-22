@@ -1,0 +1,8 @@
+{
+  "proseWrap": "always", // override (default: "preserve")
+  "singleQuote": true, // override (default: false)
+  "ignorePatterns": [
+    // release-please writes it.
+    "CHANGELOG.md",
+  ],
+}
