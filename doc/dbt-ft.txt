@@ -58,7 +58,8 @@ directory or one above it. Models, macros, tests, snapshots, analyses, and
 packages under `dbt_packages/` are all `dbt`. dbt's compiled output under the
 project's `target/` stays `sql`, as does any `.sql` file outside a project.
 Only a file named `dbt_project.yml` counts, since compiled output holds a
-directory of that name.
+directory of that name. A buffer named by a URL, such as a `fugitive://` copy
+of a model, is judged by the path after the scheme.
 
 ==============================================================================
 4. BEHAVIOUR                                                *dbt-ft-behaviour*

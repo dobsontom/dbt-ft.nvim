@@ -82,6 +82,19 @@ test("leaves compiled output and SQL outside a project as sql", function()
   end
 end)
 
+test("detects a URL by the path after its scheme, not the current directory", function()
+  local project = vim.fs.joinpath(fixtures, "project")
+  vim.cmd.cd(vim.fn.fnameescape(project))
+  for url, ft in pairs({
+    ["fugitive://" .. project .. "/.git//0/models/orders.sql"] = "dbt",
+    ["fugitive://" .. fixtures .. "/.git//0/plain.sql"] = "sql",
+    ["oil-ssh://host//srv/models/orders.sql"] = "sql",
+  }) do
+    eq(vim.filetype.match({ filename = url }), ft, url)
+  end
+  vim.cmd.cd("-")
+end)
+
 test("maps the dbt filetype to the jinja parser", function()
   eq(vim.treesitter.language.get_lang("dbt"), "jinja", "language")
 end)
