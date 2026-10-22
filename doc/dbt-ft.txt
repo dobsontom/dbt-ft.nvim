@@ -18,7 +18,7 @@ There are no commands, options, or setup function.
 
 Requirements:
 - Neovim 0.12 or later.
-- The `jinja`, `jinja_inline`, and `sql` tree-sitter parsers, for example from
+- The `jinja`, `jinja_inline`, and `sql` Tree-sitter parsers, for example from
   nvim-treesitter: >vim
     :TSInstall jinja jinja_inline sql
 <
@@ -32,7 +32,7 @@ and directive, so it doesn't need lazy-loading.
 Set `vim.g.loaded_dbt_ft = 1` before it loads to keep `.sql` files out of the
 `dbt` filetype.
 
-LazyVim starts tree-sitter for the `dbt` filetype by itself. If you start it
+LazyVim starts Tree-sitter for the `dbt` filetype by itself. If you start it
 per filetype instead, add `dbt` to your list: >lua
     vim.api.nvim_create_autocmd("FileType", {
       pattern = { "dbt", "sql" },
@@ -74,8 +74,8 @@ Jinja blocks such as `{% if %}` fold, and so do SQL statements, including the
 ones inside CTEs.
 
 Indenting ~
-Lines follow SQL's tree-sitter indents, Jinja tags included. Without
-tree-sitter indenting, SQL's regex indenting applies, as for `sql` buffers.
+Lines follow SQL's Tree-sitter indents, Jinja tags included. Without
+Tree-sitter indenting, SQL's regex indenting applies, as for `sql` buffers.
 
 Commenting ~
 'commentstring' is `{# %s #}`. With Neovim's built-in commenting, a line that
@@ -96,9 +96,9 @@ them.
   you add `dbt` to them, which keeps away the tools that can't read Jinja.
 - dbtpal sets 'filetype' to `sql` on every `.sql` file it reads, which
   replaces `dbt`.
-- A picker preview that starts tree-sitter without setting 'filetype' to
-  `dbt`, such as Snacks', shows a model's Jinja highlighted but not its SQL,
-  since only `dbt` buffers get the SQL.
+- A picker preview that starts Tree-sitter without setting 'filetype' to
+  `dbt`, such as snacks.nvim's, shows a model's Jinja highlighted but not
+  its SQL, since only `dbt` buffers get the SQL.
 - A model is parsed in full when it opens, so its SQL folds are there from
   the start. On very large models that parse, and the one after each edit,
   cost more than for plain SQL, mostly in the Jinja parser.

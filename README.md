@@ -3,7 +3,7 @@
 A Jinja-aware filetype for [dbt](https://www.getdbt.com/) models in Neovim.
 
 Neovim opens dbt models as plain SQL, so the SQL parser trips over every `{{ ref() }}` and none of the
-Jinja is highlighted. dbt-ft.nvim gives models their own `dbt` filetype, which tree-sitter parses as
+Jinja is highlighted. dbt-ft.nvim gives models their own `dbt` filetype, which Tree-sitter parses as
 Jinja with the SQL between the tags handed to the SQL parser. Highlighting, folding, and indenting then
 understand both languages, and a `dbt` buffer still gets what Neovim gives a `sql` buffer.
 
@@ -15,7 +15,7 @@ There are no commands, options, or setup function.
 ## Requirements
 
 - Neovim 0.12 or later
-- The `jinja`, `jinja_inline`, and `sql` tree-sitter parsers, for example from
+- The `jinja`, `jinja_inline`, and `sql` Tree-sitter parsers, for example from
   [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) with
   `:TSInstall jinja jinja_inline sql`
 
@@ -27,7 +27,7 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
 { "dobsontom/dbt-ft.nvim" }
 ```
 
-LazyVim starts tree-sitter for the new filetype by itself. If you start it per filetype, add `dbt` to
+LazyVim starts Tree-sitter for the new filetype by itself. If you start it per filetype, add `dbt` to
 your list.
 
 The dbt language server (`dbt lsp`, from dbt v2) starts only for the filetypes its config lists. Until
@@ -46,10 +46,10 @@ Then run `:checkhealth dbt-ft`.
 - The text between Jinja tags and each `{{ }}` expression go to the SQL parser as one document, so
   `from {{ ref('orders') }} where` parses as SQL. Calls that render nothing, such as `config()` and
   `return()`, stay out. Other Jinja files get no SQL.
-- Jinja blocks fold, and SQL keeps its tree-sitter folds and indents.
+- Jinja blocks fold, and SQL keeps its Tree-sitter folds and indents.
 - `gc` uses `{# #}` on a line that starts with a Jinja tag, indented or not, and `--` elsewhere. With
   matchit, `%` moves between Jinja block tags.
-- Without tree-sitter, SQL's regex syntax and indenting apply, with Jinja's tags highlighted on top.
+- Without Tree-sitter, SQL's regex syntax and indenting apply, with Jinja's tags highlighted on top.
 
 See `:help dbt-ft` for details and limitations.
 
