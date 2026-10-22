@@ -1,0 +1,19 @@
+$schema: https://raw.githubusercontent.com/CodSpeedHQ/codspeed/refs/heads/main/schemas/codspeed.schema.json
+
+# Each benchmark is a scenario in bench/run.lua. Run scripts/bench once first to
+# install the parsers, then `codspeed run -m simulation`.
+benchmarks:
+  - name: detect
+    exec: scripts/bench detect
+  - name: open_model
+    exec: scripts/bench open_model
+  - name: parse_large_model
+    exec: scripts/bench parse_large_model
+  - name: reparse_after_edit
+    exec: scripts/bench reparse_after_edit
+  - name: highlight_large_model
+    exec: scripts/bench highlight_large_model
+  - name: fold_large_model
+    exec: scripts/bench fold_large_model
+  - name: indent_large_model
+    exec: scripts/bench indent_large_model

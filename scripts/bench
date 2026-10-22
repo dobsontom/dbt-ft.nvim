@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Sets up the parsers the benchmarks need, the same way scripts/test does, then
+# runs the given scenario from bench/run.lua. With no scenario it only sets up,
+# so CI can install the parsers before CodSpeed measures anything.
+# DBT_FT_NVIM picks the Neovim to use. DBT_FT_TS_DIR and NVIM_TREESITTER reuse a
+# parser directory and an nvim-treesitter checkout.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+nvim=${DBT_FT_NVIM:-nvim}
+tests=$PWD/.tests
+export XDG_CONFIG_HOME=$tests/config XDG_DATA_HOME=$tests/data XDG_STATE_HOME=$tests/state XDG_CACHE_HOME=$tests/cache
+export NVIM_TREESITTER=${NVIM_TREESITTER:-$tests/nvim-treesitter}
+export DBT_FT_TS_DIR=${DBT_FT_TS_DIR:-$tests/site}
+
+if [ ! -d "$NVIM_TREESITTER" ]; then
+  git clone --quiet --depth 1 https://github.com/nvim-treesitter/nvim-treesitter "$NVIM_TREESITTER"
+fi
+parsers=$DBT_FT_TS_DIR/parser
+if [ ! -e "$parsers/jinja.so" ] || [ ! -e "$parsers/jinja_inline.so" ] || [ ! -e "$parsers/sql.so" ]; then
+  # Forced, as nvim-treesitter treats a language with queries as installed.
+  "$nvim" --clean --headless --cmd "set rtp^=$NVIM_TREESITTER" \
+    -c "lua require('nvim-treesitter').setup({ install_dir = vim.env.DBT_FT_TS_DIR })" \
+    -c "lua require('nvim-treesitter').install({ 'jinja', 'jinja_inline', 'sql' }, { force = true }):wait(300000)" \
+    -c qa
+fi
+
+if [ $# -gt 0 ]; then
+  exec "$nvim" --clean -l bench/run.lua "$@"
+fi
