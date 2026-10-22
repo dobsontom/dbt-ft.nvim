@@ -12,7 +12,8 @@ if vim.g.loaded_matchit then
   local tag = [[\%({%[-+]\=\s*\)\@<=]]
   local jinja = {
     tag .. [[if\>:]] .. tag .. [[el\%(if\|se\)\>:]] .. tag .. [[endif\>]],
-    tag .. [[for\>:]] .. tag .. [[else\>:]] .. tag .. [[endfor\>]],
+    -- No else: sharing it with if sends % from a {% for %} to the {% else %} of an if inside the loop.
+    tag .. [[for\>:]] .. tag .. [[endfor\>]],
     tag
       .. [[\(macro\|call\|filter\|block\|with\|raw\|trans\|autoescape\|snapshot\|test\|materialization\|docs\)\>:]]
       .. tag

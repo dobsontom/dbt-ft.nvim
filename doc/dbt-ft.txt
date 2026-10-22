@@ -84,7 +84,8 @@ a Jinja tag in its first column gets `{# #}`, and any other line gets SQL's
 
 Matching ~
 With matchit, |%| moves between Jinja block tags, such as `{% if %}`,
-`{% else %}`, and `{% endif %}`.
+`{% else %}`, and `{% endif %}`. A `for` loop's `{% else %}` isn't one of
+them.
 
 ==============================================================================
 5. HEALTH                                                      *dbt-ft-health*
