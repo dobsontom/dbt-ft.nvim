@@ -2,8 +2,9 @@ vim.treesitter.language.register("jinja", "dbt")
 
 local renders_nothing = { "^%s*config%s*%(", "^%s*exceptions%.", "^%s*log%s*%(", "^%s*return%s*%(" }
 
--- Every Jinja filetype shares the jinja queries, so this keeps the SQL injection to dbt buffers. It's a
--- predicate rather than a directive so that elsewhere a match stops here, before any text is read.
+-- Every Jinja filetype shares the jinja queries, so this keeps the SQL
+-- injection to dbt buffers. It's a predicate rather than a directive so that
+-- elsewhere a match stops here, before any text is read.
 vim.treesitter.query.add_predicate("dbt-sql?", function(match, _, source, pred)
   if type(source) ~= "number" or vim.api.nvim_get_option_value("filetype", { buf = source }) ~= "dbt" then
     return false
@@ -21,8 +22,9 @@ vim.treesitter.query.add_predicate("dbt-sql?", function(match, _, source, pred)
   return true
 end, { force = true })
 
--- Leave out the indent before a tag, so gc there gives {# #}, which hides the tag from Jinja,
--- rather than SQL's --, which doesn't. The newline stays to keep the SQL either side apart.
+-- Leave out the indent before a tag, so gc there gives {# #}, which hides the
+-- tag from Jinja, rather than SQL's --, which doesn't. The newline stays to
+-- keep the SQL either side apart.
 vim.treesitter.query.add_directive("dbt-trim-indent!", function(match, _, source, pred, metadata)
   -- Only reached once dbt-sql? has passed, which takes buffers alone.
   ---@cast source integer
