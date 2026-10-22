@@ -1,7 +1,5 @@
 local M = {}
 
----Returns `"dbt"` for a `.sql` file in a dbt project, or nothing for dbt's compiled output and for
----files outside a project, which leaves them to Neovim's own detection.
 ---@param path string
 ---@return string?
 function M.detect(path)
