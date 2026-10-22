@@ -3,7 +3,6 @@ if vim.b.did_ftplugin then
 end
 
 vim.cmd("runtime! ftplugin/sql[.]{vim,lua} ftplugin/sql_*.{vim,lua} ftplugin/sql/*.{vim,lua}")
-vim.b.did_ftplugin = 1
 
 vim.bo.commentstring = "{# %s #}"
 
@@ -14,7 +13,7 @@ local jinja = {
   -- No else: sharing it with if sends % from a {% for %} to the {% else %} of an if inside the loop.
   tag .. [[for\>:]] .. tag .. [[endfor\>]],
   tag
-    .. [[\(macro\|call\|filter\|block\|with\|raw\|trans\|autoescape\|snapshot\|test\|materialization\|docs\)\>:]]
+    .. [[\(autoescape\|block\|call\|filter\|macro\|raw\|with\|materialization\|snapshot\|test\)\>:]]
     .. tag
     .. [[end\1\>]],
 }
