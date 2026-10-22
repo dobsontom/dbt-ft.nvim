@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Runs the tests, building the jinja, jinja_inline, and sql parsers into .tests/ with nvim-treesitter
-# while any is missing. DBT_FT_NVIM picks the Neovim to test with (not NVIM, which Neovim sets to its own
-# socket in its terminals), and DBT_FT_TS_DIR and NVIM_TREESITTER reuse an existing parser directory
-# and nvim-treesitter checkout.
+# DBT_FT_NVIM picks the Neovim to test with, since Neovim sets NVIM to its own
+# socket in its terminals. DBT_FT_TS_DIR and NVIM_TREESITTER reuse a parser
+# directory and an nvim-treesitter checkout.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -24,4 +23,4 @@ if [ ! -e "$parsers/jinja.so" ] || [ ! -e "$parsers/jinja_inline.so" ] || [ ! -e
     -c qa
 fi
 
-"$nvim" --clean --headless -l tests/dbt_ft_spec.lua
+"$nvim" --clean -l tests/dbt_ft_spec.lua
