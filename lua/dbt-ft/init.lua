@@ -6,16 +6,12 @@ local M = {}
 ---@return string?
 function M.detect(path)
   path = vim.fs.normalize(vim.fs.abspath(path))
-  for dir in vim.fs.parents(path) do
-    local stat = vim.uv.fs_stat(vim.fs.joinpath(dir, "dbt_project.yml"))
-    -- Compiled output holds a directory of that name, so only a file marks a project.
-    if stat and stat.type == "file" then
-      if vim.startswith(path, vim.fs.joinpath(dir, "target") .. "/") then
-        return nil
-      end
-      return "dbt"
-    end
+  -- Compiled output holds a directory of that name, so only a file marks a project.
+  local project = vim.fs.find("dbt_project.yml", { upward = true, type = "file", path = vim.fs.dirname(path) })[1]
+  if not project or vim.startswith(path, vim.fs.joinpath(vim.fs.dirname(project), "target") .. "/") then
+    return nil
   end
+  return "dbt"
 end
 
 return M
