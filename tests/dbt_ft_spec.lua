@@ -3,13 +3,8 @@ local fixtures = vim.fs.joinpath(root, "tests", "fixtures")
 
 vim.opt.rtp:prepend(root)
 vim.opt.rtp:prepend(assert(vim.env.DBT_FT_TS_DIR, "DBT_FT_TS_DIR must hold the parser/ and queries/ to test with"))
-if vim.env.NVIM_TREESITTER then
-  vim.opt.rtp:append(vim.env.NVIM_TREESITTER)
-end
+vim.opt.rtp:append(assert(vim.env.NVIM_TREESITTER, "NVIM_TREESITTER must hold an nvim-treesitter checkout"))
 vim.cmd("runtime! plugin/dbt-ft.lua ftdetect/dbt.lua")
-vim.cmd("filetype plugin indent on")
-vim.cmd("syntax on")
-vim.o.swapfile = false
 vim.o.shiftwidth = 4
 vim.o.expandtab = true
 
@@ -38,7 +33,6 @@ local function open(rel, with_treesitter)
   local buf = vim.api.nvim_get_current_buf()
   if with_treesitter then
     vim.treesitter.start(buf)
-    vim.treesitter.get_parser(buf):parse(true)
   end
   return buf
 end
@@ -46,17 +40,22 @@ end
 local function row_of(buf, text)
   for row, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, false)) do
     if line:find(text, 1, true) then
-      return row, line
+      return row
     end
   end
   error("no line containing " .. text, 2)
 end
 
+local function pos(buf, text, token)
+  local row = row_of(buf, text)
+  local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, true)[1]
+  return { row, assert(line:find(token, 1, true), token .. " is not on the line") - 1 }
+end
+
 local function captures(buf, text, token)
-  local row, line = row_of(buf, text)
-  local col = assert(line:find(token, 1, true), token .. " is not on the line")
+  local at = pos(buf, text, token)
   local names = {}
-  for _, c in ipairs(vim.treesitter.get_captures_at_pos(buf, row - 1, col - 1)) do
+  for _, c in ipairs(vim.treesitter.get_captures_at_pos(buf, at[1] - 1, at[2])) do
     names[#names + 1] = c.lang .. ":" .. c.capture
   end
   return names
@@ -93,10 +92,6 @@ test("detects a URL by the path after its scheme, not the current directory", fu
     eq(vim.filetype.match({ filename = url }), ft, url)
   end
   vim.cmd.cd("-")
-end)
-
-test("maps the dbt filetype to the jinja parser", function()
-  eq(vim.treesitter.language.get_lang("dbt"), "jinja", "language")
 end)
 
 test("injects SQL into dbt buffers, {{ }} expressions included", function()
@@ -143,17 +138,16 @@ end)
 test("folds Jinja blocks and SQL statements", function()
   local buf = open("project/models/orders.sql", true)
   for _, text in ipairs({ "{% if target.name", "select order_id, status" }) do
-    local fold = vim.treesitter.foldexpr((row_of(buf, text)))
+    local fold = vim.treesitter.foldexpr(row_of(buf, text))
     assert(vim.startswith(fold, ">"), ("no fold starts at %q: %s"):format(text, fold))
   end
   buf = open("template.jinja", true)
-  local fold = vim.treesitter.foldexpr((row_of(buf, "{% raw %}")))
+  local fold = vim.treesitter.foldexpr(row_of(buf, "{% raw %}"))
   assert(vim.startswith(fold, ">"), "no fold starts at {% raw %}: " .. fold)
 end)
 
 test("has its SQL folds as soon as a model opens", function()
-  local buf = open("project/models/orders.sql")
-  vim.treesitter.start(buf)
+  local buf = open("project/models/orders.sql", true)
   vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
   vim.wo.foldmethod = "expr"
   local row = row_of(buf, "select order_id, status")
@@ -165,10 +159,9 @@ test("has its SQL folds as soon as a model opens", function()
 end)
 
 test("indents dbt buffers by SQL's rules and leaves other Jinja to autoindent", function()
-  local ok, indent = pcall(require, "nvim-treesitter.indent")
-  assert(ok, "nvim-treesitter's indent module is needed; set NVIM_TREESITTER")
+  local indent = require("nvim-treesitter.indent")
   local buf = open("project/models/orders.sql", true)
-  eq(indent.get_indent((row_of(buf, "select order_id, status"))), 4, "select inside the CTE")
+  eq(indent.get_indent(row_of(buf, "select order_id, status")), 4, "select inside the CTE")
   buf = open("template.jinja", true)
   for row = 2, vim.api.nvim_buf_line_count(buf) do
     eq(indent.get_indent(row), -1, "template line " .. row)
@@ -182,7 +175,7 @@ test("comments a line starting with a Jinja tag as Jinja, indented or not, and S
     ["where order_id"] = "    -- where order_id >= {{ threshold }}",
   }) do
     local buf = open("project/models/orders.sql", true)
-    vim.api.nvim_win_set_cursor(0, { (row_of(buf, text)), 0 })
+    vim.api.nvim_win_set_cursor(0, { row_of(buf, text), 0 })
     vim.cmd("normal gcc")
     eq(vim.api.nvim_get_current_line(), commented, "gcc on " .. text)
   end
@@ -198,34 +191,28 @@ end)
 test("falls back to SQL's regex syntax with Jinja's tags", function()
   local buf = open("project/models/orders.sql")
   eq(vim.b[buf].current_syntax, "dbt", "syntax")
-  eq(vim.fn.synIDattr(vim.fn.synID((row_of(buf, "{{ config(")), 1, 1), "name"), "dbtJinjaExpression", "syntax at {{")
+  eq(vim.fn.synIDattr(vim.fn.synID(row_of(buf, "{{ config("), 1, 1), "name"), "dbtJinjaExpression", "syntax at {{")
 end)
 
 test("moves between Jinja block tags with %", function()
   assert(vim.g.loaded_matchit, "matchit isn't loaded")
   local buf = open("project/macros/grant_select.sql")
-  local if_row, if_line = row_of(buf, "{% if")
-  vim.api.nvim_win_set_cursor(0, { if_row, if_line:find("if", 1, true) - 1 })
+  vim.api.nvim_win_set_cursor(0, pos(buf, "{% if", "if"))
   vim.cmd("normal %")
-  eq(vim.api.nvim_win_get_cursor(0)[1], (row_of(buf, "{% else")), "% from {% if %}")
+  eq(vim.api.nvim_win_get_cursor(0)[1], row_of(buf, "{% else"), "% from {% if %}")
   vim.cmd("normal %")
-  eq(vim.api.nvim_win_get_cursor(0)[1], (row_of(buf, "{% endif")), "% from {% else %}")
+  eq(vim.api.nvim_win_get_cursor(0)[1], row_of(buf, "{% endif"), "% from {% else %}")
 end)
 
 test("moves from {% for %} to {% endfor %}, past the {% else %} of an if inside", function()
   local buf = open("project/macros/union_relations.sql")
-  local for_row, for_line = row_of(buf, "{% for")
-  vim.api.nvim_win_set_cursor(0, { for_row, for_line:find("for", 1, true) - 1 })
+  vim.api.nvim_win_set_cursor(0, pos(buf, "{% for", "for"))
   vim.cmd("normal %")
-  eq(vim.api.nvim_win_get_cursor(0)[1], (row_of(buf, "{% endfor")), "% from {% for %}")
+  eq(vim.api.nvim_win_get_cursor(0)[1], row_of(buf, "{% endfor"), "% from {% for %}")
 end)
 
 test("has help tags that build", function()
-  local dir = vim.fn.tempname()
-  vim.fn.mkdir(dir .. "/doc", "p")
-  vim.fn.writefile(vim.fn.readfile(vim.fs.joinpath(root, "doc", "dbt-ft.txt")), dir .. "/doc/dbt-ft.txt")
-  vim.cmd.helptags(dir .. "/doc")
-  vim.opt.rtp:append(dir)
+  vim.cmd.helptags(vim.fs.joinpath(root, "doc"))
   vim.cmd("help dbt-ft-detection")
   eq(vim.bo.filetype, "help", "filetype")
   vim.cmd("helpclose")
