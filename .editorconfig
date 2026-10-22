@@ -1,0 +1,8 @@
+# shfmt reads this whenever it runs without printer flags, as editors run it.
+root = true
+
+[scripts/*]
+indent_size = 2
+indent_style = space
+simplify = true
+switch_case_indent = true
