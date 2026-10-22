@@ -1,9 +1,10 @@
 *dbt-ft.txt*                             A Jinja-aware filetype for dbt models
+                                                        *dbt-ft* *dbt-ft.nvim*
 
                                        Type |gO| to see the table of contents.
 
 ==============================================================================
-1. INTRODUCTION                                        *dbt-ft* *dbt-ft-intro*
+INTRODUCTION                                                    *dbt-ft-intro*
 
 dbt-ft.nvim gives dbt models their own `dbt` filetype. Tree-sitter parses a
 model as Jinja, and the SQL between the tags goes to the SQL parser, so
@@ -14,26 +15,23 @@ and indenting.
 There are no commands, options, or setup function.
 
 ==============================================================================
-2. SETUP                                                        *dbt-ft-setup*
+SETUP                                                           *dbt-ft-setup*
 
-Requirements:
+Requirements ~
 - Neovim 0.12 or later.
 - The `jinja`, `jinja_inline`, and `sql` Tree-sitter parsers, for example from
   nvim-treesitter: >vim
     :TSInstall jinja jinja_inline sql
 <
-With lazy.nvim: >lua
-    { "dobsontom/dbt-ft.nvim" }
-<
-Loading it adds a filetype pattern, a parser mapping, and a query predicate
-and directive, so it doesn't need lazy-loading.
+Loading dbt-ft.nvim adds a filetype pattern, a parser mapping, and a query
+predicate and directive, so it doesn't need lazy-loading.
 
                                                              *g:loaded_dbt_ft*
 Set `vim.g.loaded_dbt_ft = 1` before it loads to keep `.sql` files out of the
 `dbt` filetype.
 
-LazyVim starts Tree-sitter for the `dbt` filetype by itself. If you start it
-per filetype instead, add `dbt` to your list: >lua
+LazyVim starts Tree-sitter for `dbt` buffers by itself. If your config starts
+it for a list of filetypes, add `dbt` to the list: >lua
     vim.api.nvim_create_autocmd("FileType", {
       pattern = { "dbt", "sql" },
       callback = function() vim.treesitter.start() end,
@@ -42,15 +40,16 @@ per filetype instead, add `dbt` to your list: >lua
 Until then a `dbt` buffer uses SQL's regex syntax, with Jinja's tags on top.
 
                                                                   *dbt-ft-lsp*
-The dbt language server, `dbt lsp` from dbt v2, starts only for the filetypes
-its config lists. Until the one in nvim-lspconfig lists `dbt`, add it: >lua
+Language servers, formatters, and linters set up for `sql` don't run on `dbt`
+buffers, which keeps the ones that can't read Jinja off your models. Add `dbt`
+to those that can. For the dbt language server, `dbt lsp` from dbt v2: >lua
     vim.lsp.config("dbt", { filetypes = { "sql", "dbt" } })
 <
                                                                *dbt-ft-health*
 Then run `:checkhealth dbt-ft`.
 
 ==============================================================================
-3. DETECTION                                                *dbt-ft-detection*
+DETECTION                                                   *dbt-ft-detection*
 
 A `.sql` file is a dbt model when a `dbt_project.yml` file sits in its
 directory or one above it. Models, macros, tests, snapshots, analyses, and
@@ -60,7 +59,7 @@ A buffer named by a URL, such as a `fugitive://` copy of a model, is judged by
 the path after the scheme.
 
 ==============================================================================
-4. BEHAVIOUR                                                *dbt-ft-behaviour*
+BEHAVIOUR                                                   *dbt-ft-behaviour*
 
 Parsing ~
 The `dbt` filetype uses the `jinja` parser. The text between Jinja tags and
@@ -78,22 +77,20 @@ Lines follow SQL's Tree-sitter indents, Jinja tags included. Without
 Tree-sitter indenting, SQL's regex indenting applies, as for `sql` buffers.
 
 Commenting ~
-'commentstring' is `{# %s #}`. With Neovim's built-in commenting, a line that
-starts with a Jinja tag, indented or not, gets `{# #}`, which hides the tag
-from Jinja, and any other line gets SQL's `--`.
+'commentstring' is `{# %s #}`. With Neovim's built-in |commenting|, a line
+that starts with a Jinja tag, indented or not, gets `{# #}`, which hides the
+tag from Jinja, and any other line gets SQL's `--`.
 
 Matching ~
-With matchit, |%| moves between Jinja block tags, such as `{% if %}`,
+With |matchit|, |%| moves between Jinja block tags, such as `{% if %}`,
 `{% else %}`, and `{% endif %}`. A `for` loop's `{% else %}` isn't one of
 them.
 
 ==============================================================================
-5. LIMITATIONS                                            *dbt-ft-limitations*
+LIMITATIONS                                               *dbt-ft-limitations*
 
 - The Jinja parser doesn't know dbt's own `snapshot`, `test`, and
   `materialization` blocks, so those show parse errors.
-- Formatters and linters set up for `sql` don't run on `dbt` buffers until
-  you add `dbt` to them, which keeps away the tools that can't read Jinja.
 - dbtpal sets 'filetype' to `sql` on every `.sql` file it reads, which
   replaces `dbt`.
 - A picker preview that starts Tree-sitter without setting 'filetype' to
