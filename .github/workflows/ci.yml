@@ -44,7 +44,7 @@ jobs:
         run: shellcheck scripts/test
 
       - name: Run oxfmt
-        run: npx --yes oxfmt@0.72.0 --check
+        run: npx --yes oxfmt@latest --check
 
   release:
     name: Release
