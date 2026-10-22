@@ -104,6 +104,9 @@ whether the dbt language server's config covers the `dbt` filetype.
   you add `dbt` to them, which keeps away the tools that can't read Jinja.
 - dbtpal sets 'filetype' to `sql` on every `.sql` file it reads, which
   replaces `dbt`.
+- A picker preview that starts tree-sitter without setting 'filetype' to
+  `dbt`, such as Snacks', shows a model's Jinja highlighted but not its SQL,
+  since only `dbt` buffers get the SQL.
 - On very large models each edit costs more to re-parse than plain SQL,
   since the SQL is parsed as one document. Neovim parses in the background
   in short slices.
