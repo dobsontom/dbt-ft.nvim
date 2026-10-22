@@ -75,7 +75,7 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v7
 
-      # The oldest supported Neovim, so calling anything newer fails the check.
+      # The oldest supported Neovim, so each call must match its signatures.
       - name: Install Neovim
         uses: rhysd/action-setup-vim@v1
         with:
