@@ -2,7 +2,7 @@
 if vim.g.loaded_dbt_ft then
   return
 end
-vim.g.loaded_dbt_ft = true
+vim.g.loaded_dbt_ft = 1
 
 vim.filetype.add({
   pattern = {

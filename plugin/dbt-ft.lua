@@ -1,6 +1,6 @@
 vim.treesitter.language.register("jinja", "dbt")
 
-local renders_nothing = { "^%s*config%s*%(", "^%s*return%s*%(", "^%s*log%s*%(", "^%s*exceptions%." }
+local renders_nothing = { "^%s*config%s*%(", "^%s*exceptions%.", "^%s*log%s*%(", "^%s*return%s*%(" }
 
 -- Every Jinja filetype shares the jinja queries, so this keeps the SQL injection to dbt buffers. It's a
 -- predicate rather than a directive so that elsewhere a match stops here, before any text is read.

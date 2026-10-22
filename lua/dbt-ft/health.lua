@@ -25,7 +25,7 @@ function M.check()
   end
 
   if vim.treesitter.language.add("jinja") then
-    for _, name in ipairs({ "injections", "folds", "indents" }) do
+    for _, name in ipairs({ "folds", "indents", "injections" }) do
       local ok, err = pcall(vim.treesitter.query.get, "jinja", name)
       if ok then
         health.ok(("jinja %s query loads"):format(name))

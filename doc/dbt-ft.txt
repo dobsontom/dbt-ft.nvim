@@ -71,7 +71,7 @@ Parsing ~
 The `dbt` filetype uses the `jinja` parser. The text between Jinja tags and
 the expression inside each `{{ }}` go to the SQL parser as one document, so
 `from {{ ref('orders') }} where` reaches it as `from ref('orders') where`.
-`config()`, `return()`, `log()`, and `exceptions` calls render nothing, so
+`config()`, `exceptions`, `log()`, and `return()` calls render nothing, so
 they stay out. Other Jinja filetypes get no SQL.
 
 Folding ~
