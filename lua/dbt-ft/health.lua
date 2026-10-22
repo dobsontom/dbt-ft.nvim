@@ -16,28 +16,24 @@ function M.check()
     health.error("The dbt filetype isn't mapped to the jinja parser", "Check that dbt-ft.nvim's plugin/ is loaded")
   end
 
-  local have_jinja = false
   for _, lang in ipairs({ "jinja", "jinja_inline", "sql" }) do
     if vim.treesitter.language.add(lang) then
-      have_jinja = have_jinja or lang == "jinja"
       health.ok(("%s parser found"):format(lang))
     else
       health.error(("%s parser not found"):format(lang), ("Install it, for example with `:TSInstall %s`"):format(lang))
     end
   end
 
-  if have_jinja then
+  if vim.treesitter.language.add("jinja") then
     for _, name in ipairs({ "injections", "folds", "indents" }) do
-      local ok, query = pcall(vim.treesitter.query.get, "jinja", name)
-      if not ok then
+      local ok, err = pcall(vim.treesitter.query.get, "jinja", name)
+      if ok then
+        health.ok(("jinja %s query loads"):format(name))
+      else
         health.error(
-          ("jinja %s query doesn't load: %s"):format(name, query),
+          ("jinja %s query doesn't load: %s"):format(name, err),
           "Update dbt-ft.nvim and the jinja parser together"
         )
-      elseif not query then
-        health.error(("jinja %s query not found"):format(name), "Check that dbt-ft.nvim is on 'runtimepath'")
-      else
-        health.ok(("jinja %s query loads"):format(name))
       end
     end
   end
@@ -56,8 +52,7 @@ function M.check()
     health.ok("The `dbt` language server config covers the dbt filetype")
   end
 
-  local has_group, dbtpal = pcall(vim.api.nvim_get_autocmds, { group = "dbtPal", event = "BufRead" })
-  if has_group and #dbtpal > 0 then
+  if vim.fn.exists("#dbtPal#BufRead") == 1 then
     health.warn("dbtpal is loaded, and it sets 'filetype' to sql on every .sql file it reads, which replaces dbt")
   end
 end
