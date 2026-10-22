@@ -5,7 +5,7 @@ local renders_nothing = { "^%s*config%s*%(", "^%s*return%s*%(", "^%s*log%s*%(", 
 -- Every Jinja filetype shares the jinja queries, so this keeps the SQL injection to dbt buffers. It's a
 -- predicate rather than a directive so that elsewhere a match stops here, before any text is read.
 vim.treesitter.query.add_predicate("dbt-sql?", function(match, _, source, pred)
-  if type(source) ~= "number" or vim.bo[source].filetype ~= "dbt" then
+  if type(source) ~= "number" or vim.api.nvim_get_option_value("filetype", { buf = source }) ~= "dbt" then
     return false
   end
   local node = match[pred[2]][1]
