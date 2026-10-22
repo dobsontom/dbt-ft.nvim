@@ -100,10 +100,14 @@ test("injects SQL into dbt buffers, {{ }} expressions included", function()
   assert(vim.list_contains(ref, "sql:function.call"), "ref() didn't reach SQL: " .. vim.inspect(ref))
 end)
 
-test("keeps config() out of the SQL", function()
+test("keeps calls that render nothing out of the SQL", function()
   local buf = open("project/models/orders.sql", true)
   for _, name in ipairs(captures(buf, "config(", "materialized")) do
     assert(not vim.startswith(name, "sql:"), "config() reached SQL as " .. name)
+  end
+  buf = open("project/macros/order_statuses.sql", true)
+  for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
+    assert(not tree:root():has_error(), "log() or return() reached SQL: " .. tree:root():sexpr())
   end
 end)
 
