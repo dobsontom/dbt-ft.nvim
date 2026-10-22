@@ -1,5 +1,4 @@
-" Only seen when Tree-sitter isn't highlighting the buffer: SQL's syntax with
-" Jinja's tags on top.
+" Only seen when Tree-sitter isn't highlighting the buffer.
 if exists("b:current_syntax")
   finish
 endif

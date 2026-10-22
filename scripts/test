@@ -16,7 +16,7 @@ if [ ! -d "$NVIM_TREESITTER" ]; then
 fi
 parsers=$DBT_FT_TS_DIR/parser
 if [ ! -e "$parsers/jinja.so" ] || [ ! -e "$parsers/jinja_inline.so" ] || [ ! -e "$parsers/sql.so" ]; then
-  # Forced, as nvim-treesitter takes a language with queries as installed.
+  # Forced, as nvim-treesitter treats a language with queries as installed.
   "$nvim" --clean --headless --cmd "set rtp^=$NVIM_TREESITTER" \
     -c "lua require('nvim-treesitter').setup({ install_dir = vim.env.DBT_FT_TS_DIR })" \
     -c "lua require('nvim-treesitter').install({ 'jinja', 'jinja_inline', 'sql' }, { force = true }):wait(300000)" \

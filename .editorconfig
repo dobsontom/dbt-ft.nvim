@@ -1,4 +1,4 @@
-# shfmt reads this whenever it runs without printer flags, as editors run it.
+# shfmt reads this when run without parser or printer flags.
 root = true
 
 [scripts/*]

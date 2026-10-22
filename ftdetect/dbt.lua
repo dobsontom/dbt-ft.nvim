@@ -1,5 +1,5 @@
--- The guard is here rather than in plugin/, whose predicate every Jinja
--- buffer's queries need.
+-- The guard is here rather than in plugin/, because the `jinja` queries need
+-- plugin/'s predicate in every Jinja buffer.
 if vim.g.loaded_dbt_ft then
   return
 end
