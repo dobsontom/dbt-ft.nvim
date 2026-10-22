@@ -81,6 +81,26 @@ test("leaves compiled output and SQL outside a project as sql", function()
   end
 end)
 
+test("leaves models as sql when vim.g.loaded_dbt_ft is set first", function()
+  local model = vim.fs.joinpath(fixtures, "project", "models", "orders.sql")
+  local ft = vim
+    .system({
+      vim.v.progpath,
+      "--clean",
+      "--headless",
+      "--cmd",
+      "let g:loaded_dbt_ft = 1",
+      "--cmd",
+      "set rtp^=" .. root,
+      "-c",
+      ("lua io.write(vim.filetype.match({ filename = %q }))"):format(model),
+      "-c",
+      "qa!",
+    })
+    :wait().stdout
+  eq(ft, "sql", "filetype")
+end)
+
 test("detects a URL by the path after its scheme, not the current directory", function()
   local project = vim.fs.joinpath(fixtures, "project")
   vim.cmd.cd(vim.fn.fnameescape(project))

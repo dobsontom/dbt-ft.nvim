@@ -33,8 +33,12 @@ Requirements:
 With lazy.nvim: >lua
     { "dobsontom/dbt-ft.nvim" }
 <
-Loading it adds a filetype pattern, a parser mapping, and a query directive,
-so it doesn't need lazy-loading.
+Loading it adds a filetype pattern, a parser mapping, and a query predicate
+and directive, so it doesn't need lazy-loading.
+
+                                                            *g:loaded_dbt_ft*
+Set `vim.g.loaded_dbt_ft = 1` before it loads to keep `.sql` files out of the
+`dbt` filetype.
 
 LazyVim starts tree-sitter for the `dbt` filetype by itself. If you start it
 per filetype instead, add `dbt` to your list: >lua
