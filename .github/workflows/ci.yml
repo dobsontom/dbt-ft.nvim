@@ -46,6 +46,22 @@ jobs:
       - name: Run oxfmt
         run: npx --yes oxfmt@0.72.0 --check
 
+  release:
+    name: Release
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    needs: [lint, test, typecheck]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run release-please
+        uses: googleapis/release-please-action@v5
+        with:
+          release-type: simple
+
   test:
     name: Test on Neovim ${{ matrix.nvim }}
     runs-on: ubuntu-latest
