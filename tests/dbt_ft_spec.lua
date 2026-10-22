@@ -142,6 +142,19 @@ test("indents dbt buffers by SQL's rules and leaves other Jinja to autoindent", 
   end
 end)
 
+test("comments a line starting with a Jinja tag as Jinja, indented or not, and SQL as SQL", function()
+  for text, commented in pairs({
+    ["{% set threshold"] = "{# {% set threshold = 1 %} #}",
+    ["{% if target.name"] = "    {# {% if target.name == 'dev' %} #}",
+    ["where order_id"] = "    -- where order_id >= {{ threshold }}",
+  }) do
+    local buf = open("project/models/orders.sql", true)
+    vim.api.nvim_win_set_cursor(0, { (row_of(buf, text)), 0 })
+    vim.cmd("normal gcc")
+    eq(vim.api.nvim_get_current_line(), commented, "gcc on " .. text)
+  end
+end)
+
 test("uses Jinja's comment string on top of SQL's buffer settings", function()
   local buf = open("project/models/orders.sql")
   eq(vim.bo[buf].commentstring, "{# %s #}", "commentstring")

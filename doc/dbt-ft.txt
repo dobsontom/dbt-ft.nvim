@@ -78,9 +78,9 @@ Lines follow SQL's tree-sitter indents, Jinja tags included. Without
 tree-sitter indenting, SQL's regex indenting applies, as for `sql` buffers.
 
 Commenting ~
-'commentstring' is `{# %s #}`. With Neovim's built-in commenting, a line with
-a Jinja tag in its first column gets `{# #}`, and any other line gets SQL's
-`--`.
+'commentstring' is `{# %s #}`. With Neovim's built-in commenting, a line that
+starts with a Jinja tag, indented or not, gets `{# #}`, which hides the tag
+from Jinja, and any other line gets SQL's `--`.
 
 Matching ~
 With matchit, |%| moves between Jinja block tags, such as `{% if %}`,

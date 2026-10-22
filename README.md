@@ -47,8 +47,8 @@ Then run `:checkhealth dbt-ft`.
   `from {{ ref('orders') }} where` parses as SQL. `config()` renders nothing and stays out. Other Jinja
   files get no SQL.
 - Jinja blocks fold, and SQL keeps its tree-sitter folds and indents.
-- `gc` uses `{# #}` on a line with a Jinja tag in its first column and `--` elsewhere. With matchit, `%`
-  moves between Jinja block tags.
+- `gc` uses `{# #}` on a line that starts with a Jinja tag, indented or not, and `--` elsewhere. With
+  matchit, `%` moves between Jinja block tags.
 - Without tree-sitter, SQL's regex syntax and indenting apply, with Jinja's tags highlighted on top.
 
 See `:help dbt-ft` for details and limitations.

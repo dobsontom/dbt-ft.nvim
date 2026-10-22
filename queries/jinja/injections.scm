@@ -9,6 +9,6 @@
     (expression) @injection.content)
 ]
   (#not-lua-match? @injection.content "^%s*config%s*%(")
-  (#inject-dbt-sql!)
+  (#inject-dbt-sql! @injection.content)
   (#set! injection.include-children)
   (#set! injection.combined))
