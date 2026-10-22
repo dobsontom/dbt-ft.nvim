@@ -1,8 +1,3 @@
-if vim.g.loaded_dbt_ft then
-  return
-end
-vim.g.loaded_dbt_ft = true
-
 vim.treesitter.language.register("jinja", "dbt")
 
 local renders_nothing = { "^%s*config%s*%(", "^%s*return%s*%(", "^%s*log%s*%(", "^%s*exceptions%." }
