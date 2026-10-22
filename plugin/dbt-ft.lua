@@ -24,6 +24,8 @@ end, { force = true })
 -- Leave out the indent before a tag, so gc there gives {# #}, which hides the tag from Jinja,
 -- rather than SQL's --, which doesn't. The newline stays to keep the SQL either side apart.
 vim.treesitter.query.add_directive("dbt-trim-indent!", function(match, _, source, pred, metadata)
+  -- Only reached once dbt-sql? has passed, which takes buffers alone.
+  ---@cast source integer
   local id = pred[2]
   local srow, scol, erow, ecol = match[id][1]:range()
   if erow > srow and ecol > 0 and not vim.api.nvim_buf_get_text(source, erow, 0, erow, ecol, {})[1]:find("%S") then
