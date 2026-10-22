@@ -1,61 +1,95 @@
 name: CI
 
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
   schedule:
-    # Weekly, so a new jinja or sql grammar that breaks the queries fails here
+    # Weekly, so a new Jinja or SQL grammar that breaks the queries fails here
     # before users hit it.
     - cron: "0 6 * * 1"
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: JohnnyMorganz/stylua-action@v5
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Run StyLua
+        uses: JohnnyMorganz/stylua-action@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          version: 2.6.0
           args: --check .
-      - name: selene
+          version: 2.6.0
+
+      - name: Install selene
         run: |
           curl -fsSL -o "$RUNNER_TEMP/selene.zip" \
             https://github.com/Kampfkarren/selene/releases/download/0.32.0/selene-0.32.0-linux.zip
           unzip -q "$RUNNER_TEMP/selene.zip" -d "$RUNNER_TEMP"
-          chmod +x "$RUNNER_TEMP/selene"
-          "$RUNNER_TEMP/selene" .
+          sudo install -m 755 "$RUNNER_TEMP/selene" /usr/local/bin/selene
+
+      - name: Run selene
+        run: selene .
+
+      - name: Run ShellCheck
+        run: shellcheck scripts/test
+
+  test:
+    name: Test on Neovim ${{ matrix.nvim }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        nvim: [v0.12.0, stable, nightly]
+      fail-fast: false
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          version: ${{ matrix.nvim }}
+          neovim: true
+
+      - name: Install the Tree-sitter CLI
+        uses: tree-sitter/setup-action/cli@v2
+
+      - name: Run the tests
+        run: scripts/test
 
   typecheck:
+    name: Type-check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
       # The oldest supported Neovim, so calling anything newer fails the check.
-      - uses: rhysd/action-setup-vim@v1
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
         with:
-          neovim: true
           version: v0.12.0
-      - name: lua-language-server
+          neovim: true
+
+      - name: Install lua-language-server
         run: |
           mkdir "$RUNNER_TEMP/luals"
           curl -fsSL https://github.com/LuaLS/lua-language-server/releases/download/3.19.2/lua-language-server-3.19.2-linux-x64.tar.gz \
             | tar -xz -C "$RUNNER_TEMP/luals"
-          VIMRUNTIME=$(nvim --clean --headless --cmd 'lua io.write(vim.env.VIMRUNTIME)' --cmd 'qa!') \
-            "$RUNNER_TEMP/luals/bin/lua-language-server" --check . --checklevel=Warning
+          echo "$RUNNER_TEMP/luals/bin" >> "$GITHUB_PATH"
 
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        nvim: [v0.12.0, stable, nightly]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: rhysd/action-setup-vim@v1
-        with:
-          neovim: true
-          version: ${{ matrix.nvim }}
-      - uses: tree-sitter/setup-action/cli@v2
-      - run: scripts/test
+      - name: Run lua-language-server
+        run: |
+          VIMRUNTIME=$(nvim --clean --headless --cmd 'lua io.write(vim.env.VIMRUNTIME)' --cmd 'qa!') \
+            lua-language-server --check . --checklevel=Warning
