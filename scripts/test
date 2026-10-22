@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Runs the tests, building the jinja, jinja_inline, and sql parsers into .tests/ with nvim-treesitter
+# on the first run. NVIM picks the Neovim to test with, and DBT_FT_TS_DIR and NVIM_TREESITTER reuse an
+# existing parser directory and nvim-treesitter checkout.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+nvim=${NVIM:-nvim}
+tests=$PWD/.tests
+export XDG_CONFIG_HOME=$tests/config XDG_DATA_HOME=$tests/data XDG_STATE_HOME=$tests/state XDG_CACHE_HOME=$tests/cache
+export NVIM_TREESITTER=${NVIM_TREESITTER:-$tests/nvim-treesitter}
+export DBT_FT_TS_DIR=${DBT_FT_TS_DIR:-$tests/site}
+
+if [ ! -d "$NVIM_TREESITTER" ]; then
+  git clone --quiet --depth 1 https://github.com/nvim-treesitter/nvim-treesitter "$NVIM_TREESITTER"
+fi
+if [ ! -e "$DBT_FT_TS_DIR/parser/jinja.so" ]; then
+  "$nvim" --clean --headless --cmd "set rtp^=$NVIM_TREESITTER" \
+    -c "lua require('nvim-treesitter').setup({ install_dir = vim.env.DBT_FT_TS_DIR })" \
+    -c "lua require('nvim-treesitter').install({ 'jinja', 'jinja_inline', 'sql' }):wait(300000)" \
+    -c qa
+fi
+
+"$nvim" --clean --headless -l tests/dbt_ft_spec.lua
