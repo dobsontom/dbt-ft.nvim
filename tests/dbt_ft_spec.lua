@@ -238,7 +238,7 @@ test("reports healthy", function()
     report = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
     return report:find("language server", 1, true) ~= nil
   end, 50)
-  assert(report:find("jinja injections query loads", 1, true), report)
+  assert(report:find("`jinja` injections query loads", 1, true), report)
   assert(not report:find("ERROR"), report)
 end)
 
