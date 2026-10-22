@@ -48,7 +48,7 @@ function M.check()
     return vim.lsp.config.dbt
   end)
   if not ok or not config then
-    health.info("No `dbt` language server config found. nvim-lspconfig provides one.")
+    health.info("No `dbt` language server config found")
   elseif config.filetypes and not vim.list_contains(config.filetypes, "dbt") then
     health.warn(
       "The `dbt` language server config doesn't list the `dbt` filetype, so the server won't start for models",
