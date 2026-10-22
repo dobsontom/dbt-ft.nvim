@@ -53,6 +53,6 @@ Then run `:checkhealth dbt-ft`.
 
 See `:help dbt-ft` for details and limitations.
 
-## License
+## Licence
 
 MIT
