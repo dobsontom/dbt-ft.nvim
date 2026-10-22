@@ -1,5 +1,7 @@
 # dbt-ft.nvim
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/dobsontom/dbt-ft.nvim?utm_source=badge)
+
 A Jinja-aware filetype for [dbt](https://www.getdbt.com/) models in Neovim.
 
 Neovim opens dbt models as plain SQL, so the SQL parser trips over every `{{ ref() }}` and none of
