@@ -1,4 +1,4 @@
-local root = vim.fs.dirname(vim.fs.dirname(vim.fs.abspath(debug.getinfo(1, "S").source:sub(2))))
+local root = vim.fn.fnamemodify(arg[0], ":p:h:h")
 local fixtures = vim.fs.joinpath(root, "tests", "fixtures")
 
 vim.opt.rtp:prepend(root)
@@ -61,23 +61,21 @@ local function captures(buf, text, token)
   return names
 end
 
-test("detects models, macros, and package models as dbt", function()
-  for _, rel in ipairs({
-    "project/models/orders.sql",
-    "project/macros/grant_select.sql",
-    "project/dbt_packages/pkg/models/pkg_orders.sql",
-  }) do
-    eq(vim.filetype.match({ filename = vim.fs.joinpath(fixtures, rel) }), "dbt", rel)
-  end
-end)
+local function has_capture(buf, text, token, want)
+  local got = captures(buf, text, token)
+  assert(vim.list_contains(got, want), ("%s on %q: no %s in %s"):format(token, text, want, vim.inspect(got)))
+end
 
-test("leaves compiled output and SQL outside a project as sql", function()
-  for _, rel in ipairs({
-    "project/target/compiled/project/models/orders.sql",
-    "project/target/compiled/project/dbt_project.yml/hooks/project-on-run-start-0.sql",
-    "plain.sql",
+test("detects dbt models, and leaves compiled output and other SQL as sql", function()
+  for rel, ft in pairs({
+    ["plain.sql"] = "sql",
+    ["project/dbt_packages/pkg/models/pkg_orders.sql"] = "dbt",
+    ["project/macros/grant_select.sql"] = "dbt",
+    ["project/models/orders.sql"] = "dbt",
+    ["project/target/compiled/project/dbt_project.yml/hooks/project-on-run-start-0.sql"] = "sql",
+    ["project/target/compiled/project/models/orders.sql"] = "sql",
   }) do
-    eq(vim.filetype.match({ filename = vim.fs.joinpath(fixtures, rel) }), "sql", rel)
+    eq(vim.filetype.match({ filename = vim.fs.joinpath(fixtures, rel) }), ft, rel)
   end
 end)
 
@@ -103,7 +101,7 @@ end)
 
 test("detects a URL by the path after its scheme, not the current directory", function()
   local project = vim.fs.joinpath(fixtures, "project")
-  vim.cmd.cd(vim.fn.fnameescape(project))
+  local previous = vim.fn.chdir(project)
   for url, ft in pairs({
     ["fugitive://" .. project .. "/.git//0/models/orders.sql"] = "dbt",
     ["fugitive://" .. fixtures .. "/.git//0/plain.sql"] = "sql",
@@ -111,7 +109,7 @@ test("detects a URL by the path after its scheme, not the current directory", fu
   }) do
     eq(vim.filetype.match({ filename = url }), ft, url)
   end
-  vim.cmd.cd("-")
+  vim.fn.chdir(previous)
 end)
 
 test("injects SQL into dbt buffers, {{ }} expressions included", function()
@@ -119,13 +117,8 @@ test("injects SQL into dbt buffers, {{ }} expressions included", function()
   local parser = assert(vim.treesitter.get_parser(buf))
   eq(parser:lang(), "jinja", "parser")
   assert(parser:children().sql, "no SQL injection")
-  local after_ref = captures(buf, "where order_id", "where")
-  assert(
-    vim.list_contains(after_ref, "sql:keyword"),
-    "`where` after a ref() isn't a keyword: " .. vim.inspect(after_ref)
-  )
-  local ref = captures(buf, "from {{ ref(", "ref")
-  assert(vim.list_contains(ref, "sql:function.call"), "ref() didn't reach SQL: " .. vim.inspect(ref))
+  has_capture(buf, "where order_id", "where", "sql:keyword")
+  has_capture(buf, "from {{ ref(", "ref", "sql:function.call")
 end)
 
 test("keeps calls that render nothing out of the SQL", function()
@@ -141,10 +134,8 @@ end)
 
 test("highlights Jinja tags and comments", function()
   local buf = open("project/models/orders.sql", true)
-  local tag = captures(buf, "{{ config(", "{{")
-  assert(vim.list_contains(tag, "jinja:keyword.directive"), vim.inspect(tag))
-  local comment = captures(buf, "{#", "orders below")
-  assert(vim.list_contains(comment, "jinja:comment"), vim.inspect(comment))
+  has_capture(buf, "{{ config(", "{{", "jinja:keyword.directive")
+  has_capture(buf, "{#", "orders below", "jinja:comment")
 end)
 
 test("injects no SQL into other Jinja templates", function()
@@ -156,14 +147,14 @@ test("injects no SQL into other Jinja templates", function()
 end)
 
 test("folds Jinja blocks and SQL statements", function()
-  local buf = open("project/models/orders.sql", true)
-  for _, text in ipairs({ "{% if target.name", "select order_id, status" }) do
-    local fold = vim.treesitter.foldexpr(row_of(buf, text))
+  for text, rel in pairs({
+    ["select order_id, status"] = "project/models/orders.sql",
+    ["{% if target.name"] = "project/models/orders.sql",
+    ["{% raw %}"] = "template.jinja",
+  }) do
+    local fold = vim.treesitter.foldexpr(row_of(open(rel, true), text))
     assert(vim.startswith(fold, ">"), ("no fold starts at %q: %s"):format(text, fold))
   end
-  buf = open("template.jinja", true)
-  local fold = vim.treesitter.foldexpr(row_of(buf, "{% raw %}"))
-  assert(vim.startswith(fold, ">"), "no fold starts at {% raw %}: " .. fold)
 end)
 
 test("has its SQL folds as soon as a model opens", function()
