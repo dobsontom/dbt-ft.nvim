@@ -11,5 +11,6 @@
   (with_block)
   (autoescape_block)
   (trans_block)
+  (raw_block)
   (comment)
 ] @fold

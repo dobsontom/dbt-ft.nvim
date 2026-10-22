@@ -133,6 +133,9 @@ test("folds Jinja blocks and SQL statements", function()
     local fold = vim.treesitter.foldexpr((row_of(buf, text)))
     assert(vim.startswith(fold, ">"), ("no fold starts at %q: %s"):format(text, fold))
   end
+  buf = open("template.jinja", true)
+  local fold = vim.treesitter.foldexpr((row_of(buf, "{% raw %}")))
+  assert(vim.startswith(fold, ">"), "no fold starts at {% raw %}: " .. fold)
 end)
 
 test("indents dbt buffers by SQL's rules and leaves other Jinja to autoindent", function()
