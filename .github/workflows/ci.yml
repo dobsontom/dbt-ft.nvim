@@ -56,5 +56,5 @@ jobs:
         with:
           neovim: true
           version: ${{ matrix.nvim }}
-      - run: npm install --global tree-sitter-cli
+      - uses: tree-sitter/setup-action/cli@v2
       - run: scripts/test
