@@ -79,6 +79,9 @@ jobs:
         with:
           version: ${{ matrix.nvim }}
           neovim: true
+        # Fails on the 26.04 runner without it (rhysd/action-setup-vim#80).
+        env:
+          TMPDIR: ${{ runner.temp }}
 
       - name: Install the Tree-sitter CLI
         uses: tree-sitter/setup-action/cli@v2
@@ -100,6 +103,9 @@ jobs:
         with:
           version: v0.12.0
           neovim: true
+        # Fails on the 26.04 runner without it (rhysd/action-setup-vim#80).
+        env:
+          TMPDIR: ${{ runner.temp }}
 
       - name: Install lua-language-server
         run: |
