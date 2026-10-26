@@ -2,6 +2,17 @@ vim.treesitter.language.register("jinja", "dbt")
 
 local renders_nothing = { "^%s*config%s*%(", "^%s*exceptions%.", "^%s*log%s*%(", "^%s*return%s*%(" }
 
+-- SQL reads a loop's body as its only iteration, in which a block on
+-- `not loop.first` or `not loop.last` renders nothing, so a separator there
+-- such as `,` is left out rather than left dangling. A keyword one such as
+-- `union all` stays, as leaving it out would cost it SQL's colour.
+local function loop_separator(content, source)
+  local block = content:parent()
+  local tag = block:type() == "if_block" and block:named_child(0)
+  local which = tag and vim.treesitter.get_node_text(tag, source):match("^if%s+not%s+loop%.(%a+)%s*$")
+  return (which == "first" or which == "last") and not vim.treesitter.get_node_text(content, source):find("%a")
+end
+
 -- Every Jinja filetype shares the `jinja` queries, so this keeps the SQL
 -- injection to dbt buffers. It's a predicate rather than a directive so that in
 -- other Jinja buffers a match stops here, before any text is read.
@@ -10,16 +21,16 @@ vim.treesitter.query.add_predicate("dbt-sql?", function(match, _, source, pred)
     return false
   end
   local node = match[pred[2]][1]
-  if node:type() ~= "expression" then
+  if node:type() == "expression" then
+    local text = vim.treesitter.get_node_text(node, source)
+    for _, pattern in ipairs(renders_nothing) do
+      if text:find(pattern) then
+        return false
+      end
+    end
     return true
   end
-  local text = vim.treesitter.get_node_text(node, source)
-  for _, pattern in ipairs(renders_nothing) do
-    if text:find(pattern) then
-      return false
-    end
-  end
-  return true
+  return not loop_separator(node, source)
 end, { force = true })
 
 -- A call's arguments are Jinja, such as a list SQL can't parse, so SQL gets

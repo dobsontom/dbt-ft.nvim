@@ -68,6 +68,9 @@ call goes as just its name, since its arguments are Jinja, such as a list SQL
 can't parse, so `from {{ ref('orders') }} where` reaches it as
 `from ref where`, and the name keeps Jinja's colour. `config()`,
 `exceptions`, `log()`, and `return()` calls render nothing, so they stay out.
+SQL reads a loop's body as one iteration, so a separator only rendered
+between iterations, such as the `,` in `{% if not loop.last %},{% endif %}`,
+stays out too. A keyword one such as `union all` goes in, to keep its colour.
 Other Jinja filetypes get no SQL.
 
 Folding ~

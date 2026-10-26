@@ -1,8 +1,7 @@
 ; extends
 
 ; The Jinja text is SQL, and each {{ }} expression stands in for the SQL it
-; renders, so `from {{ ref('x') }} where` reaches SQL as `from ref where`.
-; Without include-children Neovim would drop the expression's own nodes.
+; renders. Without include-children Neovim would leave out its children's text.
 ([
   (content) @injection.content
   (render_expression

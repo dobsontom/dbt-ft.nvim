@@ -147,6 +147,15 @@ test("keeps calls that render nothing out of the SQL", function()
   end
 end)
 
+test("keeps a loop's separators out of the SQL, but not its keywords", function()
+  local buf = open("project/models/payment_methods.sql", true)
+  for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
+    assert(not tree:root():has_error(), "a separator reached SQL: " .. tree:root():sexpr())
+  end
+  buf = open("project/macros/union_relations.sql", true)
+  has_capture(buf, "union all", "union", "sql:keyword.operator")
+end)
+
 test("highlights Jinja tags and comments", function()
   local buf = open("project/models/orders.sql", true)
   has_capture(buf, "{{ config(", "{{", "jinja:keyword.directive")
