@@ -63,10 +63,12 @@ BEHAVIOUR                                                   *dbt-ft-behaviour*
 
 Parsing ~
 The `dbt` filetype uses the `jinja` parser. The text between Jinja tags and
-the expression inside each `{{ }}` go to the SQL parser as one document, so
-`from {{ ref('orders') }} where` reaches it as `from ref('orders') where`.
-`config()`, `exceptions`, `log()`, and `return()` calls render nothing, so
-they stay out. Other Jinja filetypes get no SQL.
+the expression inside each `{{ }}` go to the SQL parser as one document. A
+call goes as just its name, since its arguments are Jinja, such as a list SQL
+can't parse, so `from {{ ref('orders') }} where` reaches it as
+`from ref where`, and the name keeps Jinja's colour. `config()`,
+`exceptions`, `log()`, and `return()` calls render nothing, so they stay out.
+Other Jinja filetypes get no SQL.
 
 Folding ~
 Jinja blocks such as `{% if %}` fold, and so do SQL statements, including the

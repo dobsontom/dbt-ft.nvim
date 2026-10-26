@@ -118,7 +118,22 @@ test("injects SQL into dbt buffers, {{ }} expressions included", function()
   eq(parser:lang(), "jinja", "parser")
   assert(parser:children().sql, "no SQL injection")
   has_capture(buf, "where order_id", "where", "sql:keyword")
-  has_capture(buf, "from {{ ref(", "ref", "sql:function.call")
+  has_capture(buf, ">= {{ threshold", "threshold", "sql:variable.member")
+end)
+
+test("gives SQL only a call's name, which keeps Jinja's colour", function()
+  local buf = open("project/models/order_payments.sql", true)
+  for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
+    assert(not tree:root():has_error(), "a list argument reached SQL: " .. tree:root():sexpr())
+  end
+  local at = pos(buf, "generate_surrogate_key", "generate_surrogate_key")
+  local above
+  for _, c in ipairs(vim.treesitter.get_captures_at_pos(buf, at[1] - 1, at[2])) do
+    if tonumber(c.metadata.priority or 100) > 100 then
+      above = c.lang .. ":" .. c.capture
+    end
+  end
+  eq(above, "jinja:function.call", "capture above SQL's")
 end)
 
 test("keeps calls that render nothing out of the SQL", function()
