@@ -8,7 +8,7 @@ parses as Jinja with the SQL between the tags handed to the SQL parser. Highligh
 indenting then understand both languages, and a `dbt` buffer still gets what Neovim gives a `sql`
 buffer.
 
-![The same dbt model opened as filetype sql and as filetype dbt](https://raw.githubusercontent.com/dobsontom/dbt-ft.nvim/assets/sql-vs-dbt.png)
+![The same dbt model without and with dbt-ft.nvim, with the lines SQL can't parse marked in red](https://raw.githubusercontent.com/dobsontom/dbt-ft.nvim/assets/sql-vs-dbt.png)
 
 There are no commands, options, or setup function.
 
