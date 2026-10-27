@@ -124,7 +124,7 @@ end)
 test("gives SQL only a call's name, which keeps Jinja's colour", function()
   local buf = open("project/models/order_payments.sql", true)
   for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
-    assert(not tree:root():has_error(), "a list argument reached SQL: " .. tree:root():sexpr())
+    assert(not tree:root():has_error(), "a call's arguments or package reached SQL: " .. tree:root():sexpr())
   end
   local at = pos(buf, "generate_surrogate_key", "generate_surrogate_key")
   local above

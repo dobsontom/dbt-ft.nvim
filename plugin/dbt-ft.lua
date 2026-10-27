@@ -34,7 +34,8 @@ vim.treesitter.query.add_predicate("dbt-sql?", function(match, _, source, pred)
 end, { force = true })
 
 -- A call's arguments are Jinja, such as a list SQL can't parse, so SQL gets
--- only the call's name. The indent before a tag is left out, so gc there gives
+-- only the call's name, without its package so that in `amount_{{ x.f() }}`
+-- it joins the name before it as one identifier. The indent before a tag is left out, so gc there gives
 -- {# #}, which hides the tag from Jinja, rather than SQL's --, which doesn't.
 -- The newline stays to keep the SQL either side apart.
 vim.treesitter.query.add_directive("dbt-sql-range!", function(match, _, source, pred, metadata)
@@ -46,7 +47,8 @@ vim.treesitter.query.add_directive("dbt-sql-range!", function(match, _, source, 
   if node:type() == "expression" then
     local callee = vim.treesitter.get_node_text(node, source):match("^([%a_][%w_.]*)%s*%(")
     if callee then
-      metadata[id] = { range = { srow, scol, srow, scol + #callee } }
+      local name = callee:match("[%w_]*$")
+      metadata[id] = { range = { srow, scol + #callee - #name, srow, scol + #callee } }
     end
   elseif erow > srow and ecol > 0 and not vim.api.nvim_buf_get_text(source, erow, 0, erow, ecol, {})[1]:find("%S") then
     metadata[id] = { range = { srow, scol, erow, 0 } }
