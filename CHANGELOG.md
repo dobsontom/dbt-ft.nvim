@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.0.2...v1.0.3) (2026-10-27)
+
+
+### Bug Fixes
+
+* **plugin:** give SQL a call's name without its package, so Jinja inside a name joins it ([7523030](https://github.com/dobsontom/dbt-ft.nvim/commit/752303053cf33d3581a4ab0819676a346764ef95))
+
 ## [1.0.2](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.0.1...v1.0.2) (2026-10-26)
 
 
