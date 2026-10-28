@@ -43,6 +43,12 @@ vim.treesitter.query.add_directive("dbt-sql-range!", function(match, _, source, 
   ---@cast source integer
   local id = pred[2]
   local node = match[id][1]
+  local last = node:type() == "expression" and node:named_child(node:named_child_count() - 1)
+  if last and last:type() == "ternary_expression" then
+    -- SQL can't parse an inline if, so its first operand stands in for it.
+    node = assert(node:named_child(0))
+    metadata[id] = { range = { node:range() } }
+  end
   local srow, scol, erow, ecol = node:range()
   if node:type() == "expression" then
     local callee = vim.treesitter.get_node_text(node, source):match("^([%a_][%w_.]*)%s*%(")
