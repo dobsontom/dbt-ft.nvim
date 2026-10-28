@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.0.3...v1.0.4) (2026-10-28)
+
+
+### Bug Fixes
+
+* **plugin:** give SQL an inline if's first operand ([c0dc826](https://github.com/dobsontom/dbt-ft.nvim/commit/c0dc826daf601a77e4ddb64a4c2c2b34702bf874))
+
 ## [1.0.3](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.0.2...v1.0.3) (2026-10-27)
 
 
