@@ -8,10 +8,18 @@ vim.cmd("runtime! plugin/dbt-ft.lua ftdetect/dbt.lua")
 vim.o.shiftwidth = 4
 vim.o.expandtab = true
 
-local passed, failed = 0, 0
+local passed, failed, cleanups = 0, 0, {}
+
+local function defer(fn)
+  table.insert(cleanups, 1, fn)
+end
 
 local function test(name, fn)
   local ok, err = pcall(fn)
+  for _, cleanup in ipairs(cleanups) do
+    cleanup()
+  end
+  cleanups = {}
   if ok then
     passed = passed + 1
     print("ok   " .. name)
@@ -66,12 +74,45 @@ local function has_capture(buf, text, token, want)
   assert(vim.list_contains(got, want), ("%s on %q: no %s in %s"):format(token, text, want, vim.inspect(got)))
 end
 
-local function fake_client(name, settings)
-  local client = { name = name, settings = settings, sent = {} }
-  function client:notify(method, params)
-    self.sent[#self.sent + 1] = { method, params.settings }
+local function sql_parses(buf, what)
+  for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
+    assert(not tree:root():has_error(), what .. " reached SQL: " .. tree:root():sexpr())
   end
-  return client
+end
+
+-- A real client of an in-process server, so attaching it runs the plugin's
+-- LspAttach autocmd.
+local function yaml_client(name, settings, server_name)
+  local sent = {}
+  local id = assert(vim.lsp.start({
+    name = name,
+    settings = settings,
+    cmd = function()
+      return {
+        request = function(_, _, callback)
+          callback(nil, { capabilities = {}, serverInfo = server_name and { name = server_name } })
+          return true, 1
+        end,
+        notify = function(method, params)
+          if method == "workspace/didChangeConfiguration" then
+            sent[#sent + 1] = params.settings
+          end
+          return true
+        end,
+        is_closing = function()
+          return false
+        end,
+        terminate = function() end,
+      }
+    end,
+  }, {
+    attach = false,
+    reuse_client = function()
+      return false
+    end,
+  }))
+  sent = {} -- core sends one as a client with settings starts
+  return assert(vim.lsp.get_client_by_id(id)), sent
 end
 
 test("detects dbt models, and leaves compiled output and other SQL as sql", function()
@@ -89,35 +130,41 @@ end)
 
 test("leaves models as sql when vim.g.loaded_dbt_ft is set first", function()
   local model = vim.fs.joinpath(fixtures, "project", "models", "orders.sql")
-  local ft = vim
-    .system({
+  local function filetype(...)
+    return vim.system({
       vim.v.progpath,
       "--clean",
       "--headless",
-      "--cmd",
-      "let g:loaded_dbt_ft = 1",
       "--cmd",
       "set rtp^=" .. root,
       "-c",
       ("lua io.write(vim.filetype.match({ filename = %q }))"):format(model),
       "-c",
       "qa!",
+      ...,
     })
-    :wait().stdout
-  eq(ft, "sql", "filetype")
+  end
+  local guarded, unguarded = filetype("--cmd", "let g:loaded_dbt_ft = 1"), filetype()
+  eq(
+    { guarded = guarded:wait().stdout, unguarded = unguarded:wait().stdout },
+    { guarded = "sql", unguarded = "dbt" },
+    "filetype"
+  )
 end)
 
 test("detects a URL by the path after its scheme, not the current directory", function()
   local project = vim.fs.joinpath(fixtures, "project")
   local previous = vim.fn.chdir(project)
+  defer(function()
+    vim.fn.chdir(previous)
+  end)
   for url, ft in pairs({
-    ["fugitive://" .. project .. "/.git//0/models/orders.sql"] = "dbt",
     ["fugitive://" .. fixtures .. "/.git//0/plain.sql"] = "sql",
+    ["fugitive://" .. project .. "/.git//0/models/orders.sql"] = "dbt",
     ["oil-ssh://host//srv/models/orders.sql"] = "sql",
   }) do
     eq(vim.filetype.match({ filename = url }), ft, url)
   end
-  vim.fn.chdir(previous)
 end)
 
 test("injects SQL into dbt buffers, {{ }} expressions included", function()
@@ -129,11 +176,25 @@ test("injects SQL into dbt buffers, {{ }} expressions included", function()
   has_capture(buf, ">= {{ threshold", "threshold", "sql:variable.member")
 end)
 
+test("injects no SQL into other Jinja templates", function()
+  local function injected(rel)
+    local buf = open(rel)
+    local parser = assert(vim.treesitter.get_parser(buf))
+    -- Nothing parses a template as it opens, so without this it has no SQL
+    -- child either way.
+    parser:parse(true)
+    return { vim.bo[buf].filetype, parser:children().sql ~= nil }
+  end
+  eq(
+    { model = injected("project/models/orders.sql"), template = injected("template.jinja") },
+    { model = { "dbt", true }, template = { "jinja", false } },
+    "filetype and SQL injection"
+  )
+end)
+
 test("gives SQL only a call's name, which keeps Jinja's colour", function()
   local buf = open("project/models/order_payments.sql", true)
-  for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
-    assert(not tree:root():has_error(), "a call's arguments or package reached SQL: " .. tree:root():sexpr())
-  end
+  sql_parses(buf, "a call's arguments or package")
   local at = pos(buf, "generate_surrogate_key", "generate_surrogate_key")
   local above
   for _, c in ipairs(vim.treesitter.get_captures_at_pos(buf, at[1] - 1, at[2])) do
@@ -144,23 +205,23 @@ test("gives SQL only a call's name, which keeps Jinja's colour", function()
   eq(above, "jinja:function.call", "capture above SQL's")
 end)
 
+test("gives SQL an inline if's first operand", function()
+  local buf = open("project/models/completed_orders.sql", true)
+  sql_parses(buf, "the whole inline if")
+  has_capture(buf, "where status", "'completed'", "sql:string")
+end)
+
 test("keeps calls that render nothing out of the SQL", function()
   local buf = open("project/models/orders.sql", true)
   for _, name in ipairs(captures(buf, "config(", "materialized")) do
     assert(not vim.startswith(name, "sql:"), "config() reached SQL as " .. name)
   end
-  buf = open("project/macros/order_statuses.sql", true)
-  for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
-    assert(not tree:root():has_error(), "log() or return() reached SQL: " .. tree:root():sexpr())
-  end
+  sql_parses(open("project/macros/order_statuses.sql", true), "log() or return()")
 end)
 
 test("keeps a loop's separators out of the SQL, but not its keywords", function()
-  local buf = open("project/models/payment_methods.sql", true)
-  for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
-    assert(not tree:root():has_error(), "a separator reached SQL: " .. tree:root():sexpr())
-  end
-  buf = open("project/macros/union_relations.sql", true)
+  sql_parses(open("project/models/payment_methods.sql", true), "a separator")
+  local buf = open("project/macros/union_relations.sql", true)
   has_capture(buf, "union all", "union", "sql:keyword.operator")
 end)
 
@@ -168,14 +229,6 @@ test("highlights Jinja tags and comments", function()
   local buf = open("project/models/orders.sql", true)
   has_capture(buf, "{{ config(", "{{", "jinja:keyword.directive")
   has_capture(buf, "{#", "orders below", "jinja:comment")
-end)
-
-test("injects no SQL into other Jinja templates", function()
-  local buf = open("template.jinja")
-  eq(vim.bo[buf].filetype, "jinja", "filetype")
-  local parser = assert(vim.treesitter.get_parser(buf))
-  parser:parse(true)
-  eq(parser:children().sql, nil, "SQL injection")
 end)
 
 test("folds Jinja blocks and SQL statements", function()
@@ -255,43 +308,49 @@ test("moves from {% for %} to {% endfor %}, past the {% else %} of an if inside"
 end)
 
 test("maps a project's YAML to dbt's schemas when yamlls attaches", function()
-  local yaml = require("dbt-ft.yaml")
   local project = vim.fs.joinpath(fixtures, "project")
   local models =
     "https://raw.githubusercontent.com/dbt-labs/dbt-jsonschema/main/schemas/latest_fusion/dbt_yml_files-latest-fusion.json"
   local packages = models:gsub("dbt_yml_files", "packages")
-  local client = fake_client("yamlls", { yaml = { schemas = { [models] = "**/*dbt*/models/**/*.yml" } } })
-  local buf = open("project/models/schema.yml")
-  yaml.attach(client --[[@as vim.lsp.Client]], buf)
-  local schemas = client.settings.yaml.schemas
+  local client, sent = yaml_client("yamlls", { yaml = { schemas = { [models] = "**/*dbt*/models/**/*.yml" } } })
+  vim.lsp.buf_attach_client(open("project/models/schema.yml"), client.id)
+  eq(#sent, 1, "notifications")
+  local schemas = sent[1].yaml.schemas
   eq(schemas[models][1], "**/*dbt*/models/**/*.yml", "the mapping yamlls had")
   assert(vim.list_contains(schemas[models], project .. "/models/**/*.yml"), vim.inspect(schemas[models]))
   assert(vim.list_contains(schemas[packages], project .. "/packages.yml"), vim.inspect(schemas[packages]))
-  eq(client.sent, { { "workspace/didChangeConfiguration", client.settings } }, "notifications")
-  yaml.attach(client --[[@as vim.lsp.Client]], buf)
-  eq(#client.sent, 1, "notifications after a second attach")
+  eq(client.settings, sent[1], "the settings the client keeps")
+  vim.lsp.buf_attach_client(open("project/models/other.yml"), client.id)
+  eq(#sent, 1, "notifications after a second file in the project")
 end)
 
 test("knows yaml-language-server by the name it reports, whatever the client is called", function()
-  local client = fake_client("yaml", {})
-  client.server_info = { name = "yaml-language-server" }
-  require("dbt-ft.yaml").attach(client --[[@as vim.lsp.Client]], open("project/models/schema.yml"))
-  eq(#client.sent, 1, "notifications")
+  local client, sent = yaml_client("yaml", {}, "yaml-language-server")
+  vim.lsp.buf_attach_client(open("project/models/schema.yml"), client.id)
+  eq(#sent, 1, "notifications")
 end)
 
 test("leaves yamlls alone outside a project, for other servers, and when turned off", function()
-  local yaml = require("dbt-ft.yaml")
+  defer(function()
+    vim.g.dbt_ft_yaml_schemas = nil
+  end)
+  local got = {}
   for what, case in pairs({
     ["another server"] = { "jsonls", "project/packages.yml" },
     ["outside a project"] = { "yamlls", "settings.yml" },
     ["turned off"] = { "yamlls", "project/packages.yml", false },
+    ["yamlls in a project"] = { "yamlls", "project/packages.yml" },
   }) do
-    local client = fake_client(case[1], {})
+    local client, sent = yaml_client(case[1], {})
     vim.g.dbt_ft_yaml_schemas = case[3]
-    yaml.attach(client --[[@as vim.lsp.Client]], open(case[2]))
-    eq(client.sent, {}, what)
+    vim.lsp.buf_attach_client(open(case[2]), client.id)
+    got[what] = #sent
   end
-  vim.g.dbt_ft_yaml_schemas = nil
+  eq(
+    got,
+    { ["another server"] = 0, ["outside a project"] = 0, ["turned off"] = 0, ["yamlls in a project"] = 1 },
+    "notifications"
+  )
 end)
 
 test("has help tags that build", function()
