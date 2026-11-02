@@ -1,2 +1,2 @@
 std = "lua51+vim"
-exclude = [".tests/*"]
+exclude = [".deps/*"]

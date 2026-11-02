@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# The plugin's own predicate and directive are declared here rather than in a
+# .tsqueryrc.json, whose lists would replace the editor's defaults and flag
+# nvim-treesitter's #set!. `make lint` runs it, with NVIM_TREESITTER and
+# DBT_FT_TS_DIR set.
+set -euo pipefail
+
+own='{
+  "valid_directives": {
+    "dbt-sql-range": {
+      "parameters": [{ "type": "capture", "arity": "required" }],
+      "description": "narrows a dbt SQL injection to the part SQL can parse"
+    }
+  },
+  "valid_predicates": {
+    "dbt-sql": {
+      "parameters": [{ "type": "capture", "arity": "required" }],
+      "description": "matches Jinja that renders SQL, in dbt buffers only"
+    }
+  }
+}'
+ts_query_ls check queries --config "$(jq -c --arg parsers "$DBT_FT_TS_DIR/parser" --argjson own "$own" \
+  '. * $own | .parser_install_directories = [$parsers]' "$NVIM_TREESITTER/.tsqueryrc.json")"
