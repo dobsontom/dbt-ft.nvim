@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.0.5...v1.1.0) (2026-11-02)
+
+
+### Features
+
+* **yaml:** give a project's YAML dbt's schemas in yaml-language-server, whatever its directory is called ([0a64fc0](https://github.com/dobsontom/dbt-ft.nvim/commit/0a64fc072b43265e4648d723cb96ed7b9e2e50a2))
+
 ## [1.0.5](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.0.4...v1.0.5) (2026-11-02)
 
 
