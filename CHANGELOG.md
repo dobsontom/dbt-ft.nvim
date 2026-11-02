@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.1.0...v1.1.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **ci:** use a prek-action tag that exists ([745f762](https://github.com/dobsontom/dbt-ft.nvim/commit/745f76209d6bde3e453b05b0053072e57863e45a))
+
 ## [1.1.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.0.5...v1.1.0) (2026-11-02)
 
 
