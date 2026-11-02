@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.5](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.0.4...v1.0.5) (2026-11-02)
+
+
+### Bug Fixes
+
+* **plugin:** detect URL buffers as Neovim 0.13 passes them ([f756b26](https://github.com/dobsontom/dbt-ft.nvim/commit/f756b26c242824ff96f63354681e7e9826b5ae87))
+
 ## [1.0.4](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.0.3...v1.0.4) (2026-10-28)
 
 
