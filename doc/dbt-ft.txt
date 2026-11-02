@@ -10,9 +10,11 @@ dbt-ft.nvim gives dbt models their own `dbt` filetype. Tree-sitter parses a
 model as Jinja, and the SQL between the tags goes to the SQL parser, so
 highlighting, folding, and indenting understand both languages. A `dbt`
 buffer also gets what Neovim gives a `sql` buffer, such as SQL's 'comments'
-and indenting.
+and indenting. With yaml-language-server, a project's YAML gets dbt's schemas
+whatever its directory is called, see |dbt-ft-yaml|.
 
-There are no commands, options, or setup function.
+There are no commands or setup function, and one option,
+|g:dbt_ft_yaml_schemas|.
 
 ==============================================================================
 SETUP                                                           *dbt-ft-setup*
@@ -90,6 +92,20 @@ Matching ~
 With |matchit|, |%| moves between Jinja block tags, such as `{% if %}`,
 `{% else %}`, and `{% endif %}`. A `for` loop's `{% else %}` isn't one of
 them.
+
+==============================================================================
+YAML                                                             *dbt-ft-yaml*
+
+SchemaStore gives yaml-language-server most of dbt's schemas only for files
+under a directory with `dbt` in its name. When the server attaches to a
+buffer in a dbt project, dbt-ft.nvim adds that project's files to its schema
+mappings. The YAML under `macros/`, `models/`, `seeds/`, and `snapshots/`,
+and `catalogs.yml`, `dbt_project.yml`, `dependencies.yml`, `packages.yml`,
+and `selectors.yml` then get dbt's validation, completion, and hover.
+
+                                                       *g:dbt_ft_yaml_schemas*
+Set `vim.g.dbt_ft_yaml_schemas = false` to leave yaml-language-server's schema
+mappings alone.
 
 ==============================================================================
 LIMITATIONS                                               *dbt-ft-limitations*

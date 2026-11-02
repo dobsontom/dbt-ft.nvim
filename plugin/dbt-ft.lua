@@ -62,3 +62,10 @@ vim.treesitter.query.add_directive("dbt-sql-range!", function(match, _, source, 
     metadata[id] = { range = { srow, scol, erow, 0 } }
   end
 end, { force = true })
+
+vim.api.nvim_create_autocmd("LspAttach", {
+  group = vim.api.nvim_create_augroup("dbt-ft.yaml", {}),
+  callback = function(args)
+    require("dbt-ft.yaml").attach(assert(vim.lsp.get_client_by_id(args.data.client_id)), args.buf)
+  end,
+})

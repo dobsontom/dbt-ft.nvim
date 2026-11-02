@@ -10,7 +10,7 @@ buffer.
 
 ![The same dbt model without and with dbt-ft.nvim, with the lines SQL can't parse marked in red](https://raw.githubusercontent.com/dobsontom/dbt-ft.nvim/assets/sql-vs-dbt.png)
 
-There are no commands, options, or setup function.
+There are no commands or setup function.
 
 ## Features
 
@@ -20,6 +20,8 @@ There are no commands, options, or setup function.
 - Jinja blocks fold, and SQL keeps its Tree-sitter folds and indents.
 - `gc` uses `{# #}` on a line that starts with a Jinja tag, indented or not, and `--` elsewhere.
 - With matchit, `%` moves between Jinja block tags.
+- With yaml-language-server, a project's YAML gets dbt's schemas for validation, completion, and
+  hover, even when the project's directory doesn't have `dbt` in its name.
 
 See [`:help dbt-ft`](doc/dbt-ft.txt) for details and limitations.
 

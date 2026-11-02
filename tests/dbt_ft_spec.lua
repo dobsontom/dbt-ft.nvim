@@ -66,6 +66,14 @@ local function has_capture(buf, text, token, want)
   assert(vim.list_contains(got, want), ("%s on %q: no %s in %s"):format(token, text, want, vim.inspect(got)))
 end
 
+local function fake_client(name, settings)
+  local client = { name = name, settings = settings, sent = {} }
+  function client:notify(method, params)
+    self.sent[#self.sent + 1] = { method, params.settings }
+  end
+  return client
+end
+
 test("detects dbt models, and leaves compiled output and other SQL as sql", function()
   for rel, ft in pairs({
     ["plain.sql"] = "sql",
@@ -244,6 +252,46 @@ test("moves from {% for %} to {% endfor %}, past the {% else %} of an if inside"
   vim.api.nvim_win_set_cursor(0, pos(buf, "{% for", "for"))
   vim.cmd("normal %")
   eq(vim.api.nvim_win_get_cursor(0)[1], row_of(buf, "{% endfor"), "% from {% for %}")
+end)
+
+test("maps a project's YAML to dbt's schemas when yamlls attaches", function()
+  local yaml = require("dbt-ft.yaml")
+  local project = vim.fs.joinpath(fixtures, "project")
+  local models =
+    "https://raw.githubusercontent.com/dbt-labs/dbt-jsonschema/main/schemas/latest_fusion/dbt_yml_files-latest-fusion.json"
+  local packages = models:gsub("dbt_yml_files", "packages")
+  local client = fake_client("yamlls", { yaml = { schemas = { [models] = "**/*dbt*/models/**/*.yml" } } })
+  local buf = open("project/models/schema.yml")
+  yaml.attach(client --[[@as vim.lsp.Client]], buf)
+  local schemas = client.settings.yaml.schemas
+  eq(schemas[models][1], "**/*dbt*/models/**/*.yml", "the mapping yamlls had")
+  assert(vim.list_contains(schemas[models], project .. "/models/**/*.yml"), vim.inspect(schemas[models]))
+  assert(vim.list_contains(schemas[packages], project .. "/packages.yml"), vim.inspect(schemas[packages]))
+  eq(client.sent, { { "workspace/didChangeConfiguration", client.settings } }, "notifications")
+  yaml.attach(client --[[@as vim.lsp.Client]], buf)
+  eq(#client.sent, 1, "notifications after a second attach")
+end)
+
+test("knows yaml-language-server by the name it reports, whatever the client is called", function()
+  local client = fake_client("yaml", {})
+  client.server_info = { name = "yaml-language-server" }
+  require("dbt-ft.yaml").attach(client --[[@as vim.lsp.Client]], open("project/models/schema.yml"))
+  eq(#client.sent, 1, "notifications")
+end)
+
+test("leaves yamlls alone outside a project, for other servers, and when turned off", function()
+  local yaml = require("dbt-ft.yaml")
+  for what, case in pairs({
+    ["another server"] = { "jsonls", "project/packages.yml" },
+    ["outside a project"] = { "yamlls", "settings.yml" },
+    ["turned off"] = { "yamlls", "project/packages.yml", false },
+  }) do
+    local client = fake_client(case[1], {})
+    vim.g.dbt_ft_yaml_schemas = case[3]
+    yaml.attach(client --[[@as vim.lsp.Client]], open(case[2]))
+    eq(client.sent, {}, what)
+  end
+  vim.g.dbt_ft_yaml_schemas = nil
 end)
 
 test("has help tags that build", function()
