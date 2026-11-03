@@ -1,5 +1,5 @@
-# The Makefile owns which tools run and fetches them, so these hooks only
-# decide when. Hooks sharing a priority run concurrently, lowest first.
+# The Makefile owns which tools run, so these hooks only decide when. Hooks
+# sharing a priority run concurrently, lowest first.
 
 priorities:
   whitespace: 0

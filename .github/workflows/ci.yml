@@ -44,11 +44,21 @@ jobs:
 
       # The oldest supported Neovim also lints, so each call must match its
       # signatures.
-      - name: Install the tools and parsers
+      - name: Install the tools
         if: matrix.nvim == 'v0.12.0'
-        run: make -j deps parsers
         env:
           GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$RUNNER_TEMP" || exit
+          get() { gh release download --repo "$1" --pattern "$2"; }
+          get JohnnyMorganz/StyLua 'stylua-linux-x86_64.zip' && unzip -q stylua-*.zip
+          get Kampfkarren/selene 'selene-[0-9]*-linux.zip' && unzip -q selene-*.zip
+          get ribru17/ts_query_ls 'ts_query_ls-x86_64-unknown-linux-gnu.tar.gz' && tar -xzf ts_query_ls-*.tar.gz
+          get LuaLS/lua-language-server 'lua-language-server-*-linux-x64.tar.gz' &&
+            mkdir luals && tar -xzf lua-language-server-*.tar.gz -C luals
+          chmod +x stylua selene
+          printf '%s\n' "$RUNNER_TEMP" "$RUNNER_TEMP/luals/bin" >>"$GITHUB_PATH"
+          npm install --global --silent oxfmt@latest
 
       - name: Run prek
         if: matrix.nvim == 'v0.12.0'
