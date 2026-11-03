@@ -47,8 +47,9 @@ jobs:
       - name: Install the tools
         if: matrix.nvim == 'v0.12.0'
         run: |
-          /home/linuxbrew/.linuxbrew/bin/brew install lua-language-server oxfmt selene stylua ts_query_ls
+          /home/linuxbrew/.linuxbrew/bin/brew install lua-language-server selene stylua ts_query_ls
           echo /home/linuxbrew/.linuxbrew/bin >>"$GITHUB_PATH"
+          npm install --global oxfmt
 
       - name: Run prek
         if: matrix.nvim == 'v0.12.0'
