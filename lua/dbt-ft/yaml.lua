@@ -2,8 +2,7 @@ local M = {}
 
 local url = "https://raw.githubusercontent.com/dbt-labs/dbt-jsonschema/main/schemas/latest_fusion/%s-latest-fusion.json"
 
--- SchemaStore's patterns for dbt's schemas. Its catalogs entry is pending in
--- SchemaStore/schemastore#6585.
+-- SchemaStore's patterns for dbt's schemas.
 local files = {
   catalogs = { "catalogs" },
   dbt_project = { "dbt_project" },
