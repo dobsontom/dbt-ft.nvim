@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.1.0...v1.1.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **queries:** give SQL only an if's first branch, and parse the other branches on their own ([53a80b1](https://github.com/dobsontom/dbt-ft.nvim/commit/53a80b1bd6079fe3b241031dea75e9645a70aa71))
+
 ## [1.1.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.0.5...v1.1.0) (2026-11-02)
 
 
