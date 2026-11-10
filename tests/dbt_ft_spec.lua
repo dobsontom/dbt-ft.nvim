@@ -211,6 +211,16 @@ test("gives SQL an inline if's first operand", function()
   has_capture(buf, "where status", "'completed'", "sql:string")
 end)
 
+test("gives SQL an if's first branch, and parses its other branches on their own", function()
+  local buf = open("project/models/order_updates.sql", true)
+  local at = pos(buf, "select order_id", "select")
+  local main =
+    assert(vim.treesitter.get_parser(buf):children().sql:tree_for_range({ at[1] - 1, at[2], at[1] - 1, at[2] }))
+  assert(not main:root():has_error(), "the else branch reached the model's SQL: " .. main:root():sexpr())
+  eq(require("nvim-treesitter.indent").get_indent(row_of(buf, "refunded as (")), 0, "the CTE between else branches")
+  has_capture(open("project/macros/grant_select.sql", true), "select 1", "select", "sql:keyword")
+end)
+
 test("keeps calls that render nothing out of the SQL", function()
   local buf = open("project/models/orders.sql", true)
   for _, name in ipairs(captures(buf, "config(", "materialized")) do

@@ -73,7 +73,10 @@ can't parse, so `from {{ ref('orders') }} where` reaches it as
 SQL reads a loop's body as one iteration, so a separator only rendered
 between iterations, such as the `,` in `{% if not loop.last %},{% endif %}`,
 stays out too. A keyword one such as `union all` goes in, to keep its colour.
-Other Jinja filetypes get no SQL.
+SQL reads an `{% if %}` as its first branch, so an incremental model's
+`{% else %}` doesn't give it a second `where`. The other branches, and a
+`for` loop's `{% else %}`, go to it each on its own, which keeps their colour
+where they parse alone. Other Jinja filetypes get no SQL.
 
 Folding ~
 Jinja blocks such as `{% if %}` fold, and so do SQL statements, including the
