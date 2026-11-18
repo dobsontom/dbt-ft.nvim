@@ -51,7 +51,7 @@ jobs:
           echo /home/linuxbrew/.linuxbrew/bin >>"$GITHUB_PATH"
           npm install --global oxfmt
 
-      - name: Run prek
+      - name: Format, lint, and test with prek
         if: matrix.nvim == 'v0.12.0'
         uses: j178/prek-action@v3.1.0
 
