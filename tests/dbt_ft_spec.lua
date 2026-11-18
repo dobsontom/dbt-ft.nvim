@@ -33,6 +33,14 @@ local function eq(actual, expected, what)
   end
 end
 
+local function tmpdir()
+  local dir = vim.fn.tempname()
+  defer(function()
+    vim.fn.delete(dir, "rf")
+  end)
+  return dir
+end
+
 local function open(path, with_treesitter)
   vim.cmd("silent! %bwipeout!")
   local whole = vim.fn.isabsolutepath(path) == 1 or path:find("://", 1, true)
@@ -73,51 +81,22 @@ local function has_capture(buf, text, token, want)
   assert(vim.list_contains(got, want), ("%s on %q: no %s in %s"):format(token, text, want, vim.inspect(got)))
 end
 
-local function sql_parses(buf, what)
-  for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
-    assert(not tree:root():has_error(), what .. " reached SQL: " .. tree:root():sexpr())
-  end
-end
-
-local style_options = "expandtab, shiftwidth, softtabstop, tabstop, textwidth"
-
-local function style()
-  return { vim.bo.expandtab, vim.bo.shiftwidth, vim.bo.softtabstop, vim.bo.tabstop, vim.bo.textwidth }
-end
-
--- A real client of an in-process server, so attaching it runs the plugin's
--- LspAttach autocmd.
-local function yaml_client(name, settings, server_name)
-  local sent = {}
-  local id = assert(vim.lsp.start({
-    name = name,
-    settings = settings,
-    cmd = function()
-      return {
-        request = function(_, _, callback)
-          callback(nil, { capabilities = {}, serverInfo = server_name and { name = server_name } })
-          return true, 1
-        end,
-        notify = function(method, params)
-          if method == "workspace/didChangeConfiguration" then
-            sent[#sent + 1] = params.settings
-          end
-          return true
-        end,
-        is_closing = function()
-          return false
-        end,
-        terminate = function() end,
-      }
-    end,
-  }, {
-    attach = false,
-    reuse_client = function()
-      return false
-    end,
-  }))
-  sent = {} -- core sends one as a client with settings starts
-  return assert(vim.lsp.get_client_by_id(id)), sent
+---Runs Lua in a fresh Neovim with this suite's runtimepath, and returns its
+---process without waiting for it. Extra arguments go last, where a `--cmd`
+---still runs first.
+local function nvim(lua, ...)
+  return vim.system({
+    vim.v.progpath,
+    "--clean",
+    "--headless",
+    "--cmd",
+    ("lua vim.o.rtp = %q"):format(vim.o.rtp),
+    "-c",
+    "lua " .. lua:gsub("\n", " "),
+    "-c",
+    "qa!",
+    ...,
+  })
 end
 
 test("detects dbt models, and leaves compiled output and other SQL as sql", function()
@@ -136,18 +115,7 @@ end)
 test("leaves models as sql when vim.g.loaded_dbt_ft is set first", function()
   local model = vim.fs.joinpath(fixtures, "project", "models", "orders.sql")
   local function filetype(...)
-    return vim.system({
-      vim.v.progpath,
-      "--clean",
-      "--headless",
-      "--cmd",
-      "set rtp^=" .. root,
-      "-c",
-      ("lua io.write(vim.filetype.match({ filename = %q }))"):format(model),
-      "-c",
-      "qa!",
-      ...,
-    })
+    return nvim(("io.write(vim.filetype.match({ filename = %q }))"):format(model), ...)
   end
   local guarded, unguarded = filetype("--cmd", "let g:loaded_dbt_ft = 1"), filetype()
   eq(
@@ -197,6 +165,12 @@ test("injects no SQL into other Jinja templates", function()
   )
 end)
 
+local function sql_parses(buf, what)
+  for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
+    assert(not tree:root():has_error(), what .. " reached SQL: " .. tree:root():sexpr())
+  end
+end
+
 test("gives SQL only a call's name, which keeps Jinja's colour", function()
   local buf = open("project/models/order_payments.sql", true)
   sql_parses(buf, "a call's arguments or package")
@@ -231,7 +205,7 @@ test("keeps calls that render nothing out of the SQL", function()
   for _, name in ipairs(captures(buf, "config(", "materialized")) do
     assert(not vim.startswith(name, "sql:"), "config() reached SQL as " .. name)
   end
-  sql_parses(open("project/macros/order_statuses.sql", true), "log() or return()")
+  sql_parses(open("project/macros/order_statuses.sql", true), "exceptions.warn(), log(), or return()")
 end)
 
 test("keeps a loop's separators out of the SQL, but not its keywords", function()
@@ -244,6 +218,12 @@ test("highlights Jinja tags and comments", function()
   local buf = open("project/models/orders.sql", true)
   has_capture(buf, "{{ config(", "{{", "jinja:keyword.directive")
   has_capture(buf, "{#", "orders below", "jinja:comment")
+end)
+
+test("falls back to SQL's regex syntax with Jinja's tags", function()
+  local buf = open("project/models/orders.sql")
+  eq(vim.b[buf].current_syntax, "dbt", "syntax")
+  eq(vim.fn.synIDattr(vim.fn.synID(row_of(buf, "{{ config("), 1, 1), "name"), "dbtJinjaExpression", "syntax at {{")
 end)
 
 test("folds Jinja blocks and SQL statements", function()
@@ -279,6 +259,27 @@ test("indents dbt buffers by SQL's rules and leaves other Jinja to autoindent", 
   end
 end)
 
+---A temporary repository whose dbt project, in `dbt/`, holds one model.
+---@param files table<string, string> other files' text, by path from the repository's root
+---@return string model
+---@return string repo
+local function temp_repo(files)
+  local repo = tmpdir()
+  vim.fn.mkdir(vim.fs.joinpath(repo, "dbt", "models"), "p")
+  files = vim.tbl_extend("error", files, { ["dbt/dbt_project.yml"] = "", ["dbt/models/orders.sql"] = "select 1" })
+  for rel, text in pairs(files) do
+    vim.fn.writefile(vim.split(text, "\n"), vim.fs.joinpath(repo, rel))
+  end
+  return vim.fs.joinpath(repo, "dbt", "models", "orders.sql"), repo
+end
+
+local style_options = "expandtab, shiftwidth, softtabstop, tabstop, textwidth"
+local default_style = { false, 8, 0, 8, 0 }
+
+local function style()
+  return { vim.bo.expandtab, vim.bo.shiftwidth, vim.bo.softtabstop, vim.bo.tabstop, vim.bo.textwidth }
+end
+
 test("sets dbt's indent and the project's line length until 'filetype' changes, unless turned off", function()
   defer(function()
     vim.g.dbt_recommended_style = nil
@@ -291,7 +292,7 @@ test("sets dbt's indent and the project's line length until 'filetype' changes, 
   vim.g.dbt_recommended_style = false
   vim.bo.filetype = "dbt"
   got.off = style()
-  eq(got, { on = { true, 4, -1, 8, 100 }, undone = { false, 8, 0, 8, 0 }, off = { false, 8, 0, 8, 0 } }, style_options)
+  eq(got, { on = { true, 4, -1, 8, 100 }, undone = default_style, off = default_style }, style_options)
 end)
 
 test("takes each style setting from the nearest SQLFluff config at or above the model, pyproject.toml first", function()
@@ -304,47 +305,46 @@ test("takes each style setting from the nearest SQLFluff config at or above the 
   defer(function()
     vim.env.HOME = home
   end)
-  local function open_model(files, home_in_repo)
-    local repo = vim.fn.tempname()
-    defer(function()
-      vim.fn.delete(repo, "rf")
-    end)
-    vim.fn.mkdir(vim.fs.joinpath(repo, "dbt", "models"), "p")
-    files["dbt/dbt_project.yml"], files["dbt/models/orders.sql"] = "", "select 1"
-    for rel, text in pairs(files) do
-      vim.fn.writefile(vim.split(text, "\n"), vim.fs.joinpath(repo, rel))
-    end
-    vim.env.HOME = home_in_repo and vim.fs.joinpath(repo, home_in_repo) or home
-    open(vim.fs.joinpath(repo, "dbt", "models", "orders.sql"))
-    return style()
-  end
-  local got = {
-    above = open_model({ [".sqlfluff"] = sqlfluff }),
-    ["above home"] = open_model({ [".sqlfluff"] = sqlfluff }, "dbt"),
-    beside = open_model({ ["dbt/pyproject.toml"] = pyproject, ["dbt/.sqlfluff"] = sqlfluff }),
-    ["indent and length from different files"] = open_model({
-      ["pyproject.toml"] = pyproject,
-      ["dbt/.sqlfluff"] = two_spaces,
-    }),
-    nearer = open_model({ ["pyproject.toml"] = pyproject, ["dbt/models/.sqlfluff"] = sqlfluff }),
-    ["nearer with no limit"] = open_model({
-      ["pyproject.toml"] = pyproject,
-      ["dbt/.sqlfluff"] = "[sqlfluff]\nmax_line_length = -1",
-    }),
+  local cases = {
+    above = { files = { [".sqlfluff"] = sqlfluff }, style = { true, 4, -1, 8, 100 } },
+    ["above home"] = { files = { [".sqlfluff"] = sqlfluff }, home = "dbt", style = { true, 4, -1, 8, 0 } },
+    beside = {
+      files = { ["dbt/pyproject.toml"] = pyproject, ["dbt/.sqlfluff"] = sqlfluff },
+      style = { true, 4, -1, 8, 120 },
+    },
+    ["indent and length from different files"] = {
+      files = { ["pyproject.toml"] = pyproject, ["dbt/.sqlfluff"] = two_spaces },
+      style = { true, 2, -1, 8, 120 },
+    },
+    nearer = {
+      files = { ["pyproject.toml"] = pyproject, ["dbt/models/.sqlfluff"] = sqlfluff },
+      style = { true, 4, -1, 8, 100 },
+    },
+    ["nearer with no limit"] = {
+      files = { ["pyproject.toml"] = pyproject, ["dbt/.sqlfluff"] = "[sqlfluff]\nmax_line_length = -1" },
+      style = { true, 4, -1, 8, 0 },
+    },
+    tabs = { files = { ["dbt/pyproject.toml"] = tabs }, style = { false, 0, 0, 6, 0 } },
   }
-  got.tabs = open_model({ ["dbt/pyproject.toml"] = tabs })
-  vim.bo.filetype = "sql"
-  got["tabs undone"] = style()
-  eq(got, {
-    above = { true, 4, -1, 8, 100 },
-    ["above home"] = { true, 4, -1, 8, 0 },
-    beside = { true, 4, -1, 8, 120 },
-    ["indent and length from different files"] = { true, 2, -1, 8, 120 },
-    nearer = { true, 4, -1, 8, 100 },
-    ["nearer with no limit"] = { true, 4, -1, 8, 0 },
-    tabs = { false, 0, 0, 6, 0 },
-    ["tabs undone"] = { false, 8, 0, 8, 0 },
-  }, style_options)
+  for what, case in pairs(cases) do
+    local model, repo = temp_repo(case.files)
+    vim.env.HOME = case.home and vim.fs.joinpath(repo, case.home) or home
+    open(model)
+    eq(style(), case.style, what .. ": " .. style_options)
+    vim.bo.filetype = "sql"
+    eq(style(), default_style, what .. " undone: " .. style_options)
+  end
+end)
+
+test("lets a project's EditorConfig override the style", function()
+  local model = temp_repo({
+    [".editorconfig"] = "root = true\n\n[*.sql]\nindent_size = 2\nmax_line_length = 90",
+    [".sqlfluff"] = "[sqlfluff]\nmax_line_length = 100",
+  })
+  -- A fresh Neovim, as `nvim -l` loads no plugins, EditorConfig's included.
+  local shown =
+    nvim(("vim.cmd.edit(%q) io.write(vim.bo.filetype, ' ', vim.bo.shiftwidth, ' ', vim.bo.textwidth)"):format(model))
+  eq(shown:wait().stdout, "dbt 2 90", "filetype, shiftwidth, and textwidth")
 end)
 
 test("takes a URL buffer's 'textwidth' from the project its path is in", function()
@@ -383,12 +383,6 @@ test("uses Jinja's comment string on top of SQL's buffer settings", function()
   eq(vim.b[buf].did_indent, 1, "SQL's indent script")
 end)
 
-test("falls back to SQL's regex syntax with Jinja's tags", function()
-  local buf = open("project/models/orders.sql")
-  eq(vim.b[buf].current_syntax, "dbt", "syntax")
-  eq(vim.fn.synIDattr(vim.fn.synID(row_of(buf, "{{ config("), 1, 1), "name"), "dbtJinjaExpression", "syntax at {{")
-end)
-
 test("moves between Jinja block tags with %", function()
   assert(vim.g.loaded_matchit, "matchit isn't loaded")
   local buf = open("project/macros/grant_select.sql")
@@ -405,6 +399,41 @@ test("moves from {% for %} to {% endfor %}, past the {% else %} of an if inside"
   vim.cmd("normal %")
   eq(vim.api.nvim_win_get_cursor(0)[1], row_of(buf, "{% endfor"), "% from {% for %}")
 end)
+
+-- A real client of an in-process server, so attaching it runs the plugin's
+-- LspAttach autocmd.
+local function yaml_client(name, settings, server_name)
+  local sent = {}
+  local id = assert(vim.lsp.start({
+    name = name,
+    settings = settings,
+    cmd = function()
+      return {
+        request = function(_, _, callback)
+          callback(nil, { capabilities = {}, serverInfo = server_name and { name = server_name } })
+          return true, 1
+        end,
+        notify = function(method, params)
+          if method == "workspace/didChangeConfiguration" then
+            sent[#sent + 1] = params.settings
+          end
+          return true
+        end,
+        is_closing = function()
+          return false
+        end,
+        terminate = function() end,
+      }
+    end,
+  }, {
+    attach = false,
+    reuse_client = function()
+      return false
+    end,
+  }))
+  sent = {} -- core sends one as a client with settings starts
+  return assert(vim.lsp.get_client_by_id(id)), sent
+end
 
 test("maps a project's YAML to dbt's schemas when yamlls attaches", function()
   local project = vim.fs.joinpath(fixtures, "project")
@@ -433,26 +462,18 @@ test("leaves yamlls alone outside a project, for other servers, and when turned 
   defer(function()
     vim.g.dbt_ft_yaml_schemas = nil
   end)
-  local got = {}
   for what, case in pairs({
-    ["another server"] = { "jsonls", "project/packages.yml" },
-    ["outside a project"] = { "yamlls", "settings.yml" },
-    ["turned off"] = { "yamlls", "project/packages.yml", false },
-    ["turned off with 0"] = { "yamlls", "project/packages.yml", 0 },
-    ["yamlls in a project"] = { "yamlls", "project/packages.yml" },
+    ["another server"] = { client = "jsonls", file = "project/packages.yml", sent = 0 },
+    ["outside a project"] = { client = "yamlls", file = "settings.yml", sent = 0 },
+    ["turned off"] = { client = "yamlls", file = "project/packages.yml", option = false, sent = 0 },
+    ["turned off with 0"] = { client = "yamlls", file = "project/packages.yml", option = 0, sent = 0 },
+    ["yamlls in a project"] = { client = "yamlls", file = "project/packages.yml", sent = 1 },
   }) do
-    local client, sent = yaml_client(case[1], {})
-    vim.g.dbt_ft_yaml_schemas = case[3]
-    vim.lsp.buf_attach_client(open(case[2]), client.id)
-    got[what] = #sent
+    local client, sent = yaml_client(case.client, {})
+    vim.g.dbt_ft_yaml_schemas = case.option
+    vim.lsp.buf_attach_client(open(case.file), client.id)
+    eq(#sent, case.sent, "notifications for " .. what)
   end
-  eq(got, {
-    ["another server"] = 0,
-    ["outside a project"] = 0,
-    ["turned off"] = 0,
-    ["turned off with 0"] = 0,
-    ["yamlls in a project"] = 1,
-  }, "notifications")
 end)
 
 test("has help tags that build", function()
@@ -462,17 +483,64 @@ test("has help tags that build", function()
   vim.cmd("helpclose")
 end)
 
-test("reports healthy", function()
-  vim.cmd("silent! %bwipeout!")
-  vim.cmd("checkhealth dbt-ft")
-  local buf, report = vim.api.nvim_get_current_buf(), ""
-  -- Neovim 0.13 fills the report asynchronously.
-  vim.wait(10000, function()
-    report = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
-    return report:find("language server", 1, true) ~= nil
-  end, 50)
-  assert(report:find("`jinja` injections query loads", 1, true), report)
-  assert(not report:find("ERROR"), report)
+-- Each report comes from a fresh Neovim, as a test's language server config
+-- can't be unset afterwards. Neovim 0.13 fills the report asynchronously.
+local function health(setup)
+  return nvim(setup .. [[
+ vim.cmd("checkhealth dbt-ft")
+ local buf, report = vim.api.nvim_get_current_buf(), ""
+ vim.wait(10000, function()
+   report = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+   return report:find("language server", 1, true) ~= nil
+ end, 50)
+ io.write(report)]])
+end
+
+test("reports healthy, and checks the dbt language server only once it's enabled", function()
+  local dir = tmpdir()
+  -- Real dbt v2 exits 0 from `dbt lsp --help`, and dbt-core 1.x exits 2.
+  local function fake_exe(rel, code)
+    local path = vim.fs.joinpath(dir, rel)
+    vim.fn.mkdir(vim.fs.dirname(path), "p")
+    vim.fn.writefile({ "#!/bin/sh", "exit " .. code }, path)
+    vim.fn.setfperm(path, "rwxr-xr-x")
+    return path
+  end
+  local function config(cmd, filetype)
+    return ("vim.lsp.config.dbt = { cmd = %s, filetypes = { %q } }"):format(vim.inspect(cmd), filetype or "dbt")
+  end
+  local enable = " vim.lsp.enable('dbt')"
+  local dbt1, dbt2 = fake_exe("1/dbt", 2), fake_exe("2/dbt", 0)
+  local other = fake_exe("other/dbt-language-server", 2)
+  local covered = "OK The `dbt` language server config covers the `dbt` filetype"
+  local cases = {
+    ["dbt 1.x"] = { setup = config({ dbt1, "lsp" }) .. enable, line = "WARNING `" .. dbt1 .. "` has no `lsp` command" },
+    ["dbt 2"] = { setup = config({ dbt2, "lsp" }) .. enable, line = "OK `" .. dbt2 .. "` has the `lsp` command" },
+    ["no config"] = { setup = enable, line = "WARNING The `dbt` language server is enabled but has no config" },
+    ["no dbt filetype"] = {
+      setup = config({ dbt2, "lsp" }, "sql") .. enable,
+      line = "WARNING The `dbt` language server config doesn't list the `dbt` filetype",
+    },
+    ["no executable"] = {
+      setup = config({ vim.fs.joinpath(dir, "missing", "dbt"), "lsp" }) .. enable,
+      line = covered,
+    },
+    ["not enabled"] = { setup = config({ dbt1, "lsp" }), line = "The `dbt` language server isn't enabled" },
+    ["nothing set up"] = { setup = "", line = "OK `jinja` injections query loads" },
+    ["other server"] = { setup = config({ other, "--stdio" }) .. enable, line = covered },
+  }
+  -- Started together, then awaited, so the reports are built side by side.
+  local runs = vim.tbl_map(function(case)
+    return health(case.setup)
+  end, cases)
+  for what, case in pairs(cases) do
+    local report = runs[what]:wait().stdout
+    assert(report:find(case.line, 1, true), ("%s: no %q in\n%s"):format(what, case.line, report))
+    local others = vim.tbl_filter(function(line)
+      return not line:find(case.line, 1, true) and (line:find("WARNING", 1, true) or line:find("ERROR", 1, true))
+    end, vim.split(report, "\n"))
+    eq(others, {}, what .. ": other warnings and errors")
+  end
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))
