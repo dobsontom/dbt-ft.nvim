@@ -5,7 +5,7 @@
 
 ### Features
 
-* **ftplugin:** continue a -- comment onto the line &lt;CR&gt; or o opens ([2648712](https://github.com/dobsontom/dbt-ft.nvim/commit/264871233b085de17b942a143a489f695120da61))
+* **ftplugin:** continue a -- comment onto the line `<CR>` or `o` opens ([2648712](https://github.com/dobsontom/dbt-ft.nvim/commit/264871233b085de17b942a143a489f695120da61))
 * **ftplugin:** indent dbt buffers by four spaces, unless g:dbt_recommended_style is off ([d7c4539](https://github.com/dobsontom/dbt-ft.nvim/commit/d7c4539ac80e9278146cbb112c4b8853c619e13f))
 * **ftplugin:** take the indent and 'textwidth' from the nearest SQLFluff config ([6ac6640](https://github.com/dobsontom/dbt-ft.nvim/commit/6ac66401b3160317cbe0ac563786f32ff49d4b99))
 * **health:** check that an enabled dbt language server covers dbt buffers and has the lsp command ([7ab9eb2](https://github.com/dobsontom/dbt-ft.nvim/commit/7ab9eb2a02664a965fc3adc674965674cea21677))
