@@ -21,8 +21,8 @@ function M.attach(client, buf)
   if (server ~= "yaml-language-server" and client.name ~= "yamlls") or not dbt_ft.enabled("dbt_ft_yaml_schemas") then
     return
   end
-  local name = vim.api.nvim_buf_get_name(buf)
-  local root = name ~= "" and not name:find("^%a[%w+.-]*://") and dbt_ft.root(name)
+  local file = dbt_ft.buf_path(buf)
+  local root = file and dbt_ft.root(file)
   if not root then
     return
   end

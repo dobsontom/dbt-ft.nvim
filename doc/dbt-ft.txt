@@ -86,13 +86,29 @@ Indenting ~
 Lines follow SQL's Tree-sitter indents, Jinja tags included. Without
 Tree-sitter indenting, SQL's regex indenting applies, as for `sql` buffers.
 
-Each level is four spaces, as dbt Labs' SQL style guide and SQLFluff's
-defaults have it: 'shiftwidth' is 4, 'softtabstop' follows it, and
-'expandtab' is on. A project's EditorConfig overrides these.
+Style ~
+A model's indent and line length follow SQLFluff's config, which `dbt lint`
+and `dbt format` use too:
+- 'shiftwidth' is `tab_space_size`, or 4 without one, as dbt Labs' SQL style
+  guide and SQLFluff's defaults have it. 'softtabstop' follows it.
+- 'expandtab' is on unless `indent_unit` is `tab`. Then 'tabstop' is
+  `tab_space_size`, and 'shiftwidth' and 'softtabstop' are 0 to follow it.
+- 'textwidth' is `max_line_length`, and is left alone without one or with
+  SQLFluff's no limit of 0 or less. As you type, SQL's 'formatoptions' wrap
+  comments, not code, and |gq| wraps to it as well.
+
+Each comes from the nearest directory, from the model's up to your home
+directory, that sets it under `[tool.sqlfluff.core]` or
+`[tool.sqlfluff.indentation]` in `pyproject.toml`, or `[sqlfluff]` or
+`[sqlfluff:indentation]` in `.sqlfluff`. Within a directory `pyproject.toml`
+wins, as in SQLFluff, though dbt reads only `.sqlfluff`. SQLFluff's other
+config files aren't read.
+
+A project's EditorConfig overrides all of these.
 
                                                      *g:dbt_recommended_style*
-Set `vim.g.dbt_recommended_style = false`, or `0`, to keep your own indent
-settings in `dbt` buffers.
+Set `vim.g.dbt_recommended_style = false`, or `0`, to keep your own settings
+for these options in `dbt` buffers.
 
 Commenting ~
 'commentstring' is `{# %s #}`. With Neovim's built-in |commenting|, a line
