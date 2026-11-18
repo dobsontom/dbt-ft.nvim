@@ -115,6 +115,10 @@ Commenting ~
 that starts with a Jinja tag, indented or not, gets `{# #}`, which hides the
 tag from Jinja, and any other line gets SQL's `--`.
 
+A `--` comment continues onto the line that <CR> or |o| opens, as
+'formatoptions' has `r` and `o`. SQL's 'comments' make those continue a
+`/* */` comment with ` * ` too.
+
 Matching ~
 With |matchit|, |%| moves between Jinja block tags, such as `{% if %}`,
 `{% else %}`, and `{% endif %}`. A `for` loop's `{% else %}` isn't one of

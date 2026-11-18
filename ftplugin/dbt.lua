@@ -5,6 +5,9 @@ end
 vim.cmd("runtime! ftplugin/sql[.]{vim,lua} ftplugin/sql_*.{vim,lua} ftplugin/sql/*.{vim,lua}")
 
 vim.bo.commentstring = "{# %s #}"
+-- SQL's 'comments' stay, though they continue a /* */ comment with ` * `:
+-- without their s1:/*,mb:*,ex:*/ entry, gq flattens a starred block.
+vim.opt_local.formatoptions:append("ro")
 
 local dbt_ft = require("dbt-ft")
 if dbt_ft.enabled("dbt_recommended_style") then
