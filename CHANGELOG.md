@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.1.1...v1.2.0) (2026-11-18)
+
+
+### Features
+
+* **ftplugin:** continue a -- comment onto the line &lt;CR&gt; or o opens ([2648712](https://github.com/dobsontom/dbt-ft.nvim/commit/264871233b085de17b942a143a489f695120da61))
+* **ftplugin:** indent dbt buffers by four spaces, unless g:dbt_recommended_style is off ([d7c4539](https://github.com/dobsontom/dbt-ft.nvim/commit/d7c4539ac80e9278146cbb112c4b8853c619e13f))
+* **ftplugin:** take the indent and 'textwidth' from the nearest SQLFluff config ([6ac6640](https://github.com/dobsontom/dbt-ft.nvim/commit/6ac66401b3160317cbe0ac563786f32ff49d4b99))
+* **health:** check that an enabled dbt language server covers dbt buffers and has the lsp command ([7ab9eb2](https://github.com/dobsontom/dbt-ft.nvim/commit/7ab9eb2a02664a965fc3adc674965674cea21677))
+
+
+### Bug Fixes
+
+* **yaml:** leave yamlls's schema mappings alone when g:dbt_ft_yaml_schemas is 0, as when it is false ([41fc730](https://github.com/dobsontom/dbt-ft.nvim/commit/41fc730a78da0e7fee83d0a94a4d83e71b25b863))
+
 ## [1.1.1](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.1.0...v1.1.1) (2026-11-10)
 
 
