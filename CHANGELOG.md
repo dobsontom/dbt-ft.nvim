@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.2.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.1.1...v1.2.0) (2026-11-18)
+
+
+### Features
+
+* **ftplugin:** continue a -- comment onto the line `<CR>` or `o` opens ([43fb4d4](https://github.com/dobsontom/dbt-ft.nvim/commit/43fb4d43c31aedb0b10103bb486fb7ebe06a8c66))
+* **ftplugin:** indent dbt buffers by four spaces, unless g:dbt_recommended_style is off ([d7c4539](https://github.com/dobsontom/dbt-ft.nvim/commit/d7c4539ac80e9278146cbb112c4b8853c619e13f))
+* **ftplugin:** take the indent and 'textwidth' from the nearest SQLFluff config ([1f1f4a0](https://github.com/dobsontom/dbt-ft.nvim/commit/1f1f4a0bcb200b6948e2877019cba185240e030f))
+* **health:** check that an enabled dbt language server covers dbt buffers and has the lsp command ([1a8c86b](https://github.com/dobsontom/dbt-ft.nvim/commit/1a8c86b6dee010c2baefb5f65f9717b031a191f3))
+* **plugin:** turn the whole plugin off with g:loaded_dbt_ft, keeping only the query handlers ([c4c682a](https://github.com/dobsontom/dbt-ft.nvim/commit/c4c682a5164917419d7bbde9c5c9429965fa08d6))
+
+
+### Bug Fixes
+
+* **yaml:** leave yamlls's schema mappings alone when g:dbt_ft_yaml_schemas is 0, as when it is false ([d7e7583](https://github.com/dobsontom/dbt-ft.nvim/commit/d7e758316ab7b4b6d82a7cc52d7b61721f6fa931))
+
 ## [1.1.1](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.1.0...v1.1.1) (2026-11-10)
 
 
