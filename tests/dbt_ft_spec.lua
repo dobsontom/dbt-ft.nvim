@@ -5,8 +5,6 @@ vim.opt.rtp:prepend(root)
 vim.opt.rtp:prepend(assert(vim.env.DBT_FT_TS_DIR, "DBT_FT_TS_DIR must hold the parser/ and queries/ to test with"))
 vim.opt.rtp:append(assert(vim.env.NVIM_TREESITTER, "NVIM_TREESITTER must hold an nvim-treesitter checkout"))
 vim.cmd("runtime! plugin/dbt-ft.lua ftdetect/dbt.lua")
-vim.o.shiftwidth = 4
-vim.o.expandtab = true
 
 local passed, failed, cleanups = 0, 0, {}
 
@@ -272,6 +270,28 @@ test("indents dbt buffers by SQL's rules and leaves other Jinja to autoindent", 
   for row = 2, vim.api.nvim_buf_line_count(buf) do
     eq(indent.get_indent(row), -1, "template line " .. row)
   end
+end)
+
+test("indents by four spaces until 'filetype' changes, unless turned off", function()
+  defer(function()
+    vim.g.dbt_recommended_style = nil
+  end)
+  local function style()
+    return { vim.bo.expandtab, vim.bo.shiftwidth, vim.bo.softtabstop }
+  end
+  local got = {}
+  open("project/models/orders.sql")
+  got.on = style()
+  vim.bo.filetype = "sql"
+  got.undone = style()
+  vim.g.dbt_recommended_style = false
+  vim.bo.filetype = "dbt"
+  got.off = style()
+  eq(
+    got,
+    { on = { true, 4, -1 }, undone = { false, 8, 0 }, off = { false, 8, 0 } },
+    "expandtab, shiftwidth, softtabstop"
+  )
 end)
 
 test("comments a line starting with a Jinja tag as Jinja, indented or not, and SQL as SQL", function()

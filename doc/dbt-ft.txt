@@ -13,8 +13,8 @@ buffer also gets what Neovim gives a `sql` buffer, such as SQL's 'comments'
 and indenting. With yaml-language-server, a project's YAML gets dbt's schemas
 whatever its directory is called, see |dbt-ft-yaml|.
 
-There are no commands or setup function, and one option,
-|g:dbt_ft_yaml_schemas|.
+There are no commands or setup function, and two options,
+|g:dbt_recommended_style| and |g:dbt_ft_yaml_schemas|.
 
 ==============================================================================
 SETUP                                                           *dbt-ft-setup*
@@ -85,6 +85,14 @@ ones inside CTEs.
 Indenting ~
 Lines follow SQL's Tree-sitter indents, Jinja tags included. Without
 Tree-sitter indenting, SQL's regex indenting applies, as for `sql` buffers.
+
+Each level is four spaces, as dbt Labs' SQL style guide and SQLFluff's
+defaults have it: 'shiftwidth' is 4, 'softtabstop' follows it, and
+'expandtab' is on. A project's EditorConfig overrides these.
+
+                                                     *g:dbt_recommended_style*
+Set `vim.g.dbt_recommended_style = false`, or `0`, to keep your own indent
+settings in `dbt` buffers.
 
 Commenting ~
 'commentstring' is `{# %s #}`. With Neovim's built-in |commenting|, a line
