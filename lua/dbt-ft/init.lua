@@ -6,8 +6,12 @@ local function local_path(path)
   -- Neovim 0.13 passes fugitive:///repo/.git//0/a.sql to detect() as it is,
   -- and earlier versions as <cwd>/fugitive:/repo/.git/0/a.sql, so this takes
   -- the path after the scheme from either.
-  local rel = vim.fn.has("nvim-0.13") == 0 and vim.fs.relpath(assert(vim.uv.cwd()), path)
-  local url = path:match("^%a[%w+.-]*:(//.*)$") or rel and rel:match("^%a[%w+.-]*:(/.*)$")
+  local scheme = "^%a[%w+.-]*:"
+  local url = path:match(scheme .. "(//.*)$")
+  if not url and vim.fn.has("nvim-0.13") == 0 then
+    local rel = vim.fs.relpath(assert(vim.uv.cwd()), path)
+    url = rel and rel:match(scheme .. "(/.*)$")
+  end
   return vim.fs.normalize(url or vim.fs.abspath(path))
 end
 
