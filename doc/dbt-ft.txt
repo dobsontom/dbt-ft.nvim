@@ -11,27 +11,29 @@ model as Jinja, and the SQL between the tags goes to the SQL parser, so
 highlighting, folding, and indenting understand both languages. A `dbt`
 buffer also gets what Neovim gives a `sql` buffer, such as SQL's 'comments'
 and indenting. With yaml-language-server, a project's YAML gets dbt's schemas
-whatever its directory is called, see |dbt-ft-yaml|.
+even when the project's directory doesn't have `dbt` in its name (see
+|dbt-ft-yaml|).
 
-There are no commands or setup function, and two options,
-|g:dbt_recommended_style| and |g:dbt_ft_yaml_schemas|.
+There are no commands and no setup function. Three global variables change
+what it does (see |dbt-ft-options|).
 
 ==============================================================================
 SETUP                                                           *dbt-ft-setup*
 
+                                                         *dbt-ft-requirements*
 Requirements ~
 - Neovim 0.12 or later.
 - The `jinja`, `jinja_inline`, and `sql` Tree-sitter parsers, for example from
   nvim-treesitter: >vim
     :TSInstall jinja jinja_inline sql
 <
-Loading dbt-ft.nvim adds a filetype pattern, a parser mapping, and a query
-predicate and directive, so it doesn't need lazy-loading.
+                                                              *dbt-ft-loading*
+Loading ~
+Don't lazy-load dbt-ft.nvim. It does almost nothing at startup, and it can't
+load on the `dbt` filetype, which only it detects.
 
-                                                             *g:loaded_dbt_ft*
-Set `vim.g.loaded_dbt_ft = 1` before it loads to keep `.sql` files out of the
-`dbt` filetype.
-
+                                                           *dbt-ft-treesitter*
+Starting Tree-sitter ~
 LazyVim starts Tree-sitter for `dbt` buffers by itself. If your config starts
 it for a list of filetypes, add `dbt` to the list: >lua
     vim.api.nvim_create_autocmd("FileType", {
@@ -39,94 +41,151 @@ it for a list of filetypes, add `dbt` to the list: >lua
       callback = function() vim.treesitter.start() end,
     })
 <
-Until then a `dbt` buffer uses SQL's regex syntax, with Jinja's tags on top.
+Without Tree-sitter a `dbt` buffer uses SQL's regex syntax, with Jinja's tags
+on top.
 
-                                                                  *dbt-ft-lsp*
-Language servers, formatters, and linters set up for `sql` don't run on `dbt`
-buffers, which keeps the ones that can't read Jinja off your models. Add `dbt`
-to those that can. For the dbt language server, `dbt lsp` from dbt v2: >lua
-    vim.lsp.config("dbt", { filetypes = { "sql", "dbt" } })
-<
-                                                               *dbt-ft-health*
-Then run `:checkhealth dbt-ft`.
+Checking ~
+Run `:checkhealth dbt-ft` to check the setup (see |dbt-ft-health|).
+
+==============================================================================
+OPTIONS                                                       *dbt-ft-options*
+
+|g:dbt_ft_yaml_schemas|    dbt's schemas for a project's YAML.
+|g:dbt_recommended_style|  The indent and 'textwidth' of `dbt` buffers.
+|g:loaded_dbt_ft|          Detecting `.sql` files as `dbt`.
 
 ==============================================================================
 DETECTION                                                   *dbt-ft-detection*
 
-A `.sql` file is a dbt model when a `dbt_project.yml` file sits in its
-directory or one above it. Models, macros, tests, snapshots, analyses, and
-packages under `dbt_packages/` are all `dbt`. dbt's compiled output under the
-project's `target/` stays `sql`, as does any `.sql` file outside a project.
+A `.sql` file gets the `dbt` filetype when a `dbt_project.yml` file sits in
+its directory or any directory above it. That covers models, macros, tests,
+snapshots, analyses, and packages under `dbt_packages/`. dbt's compiled
+output under the project's `target/` stays `sql`, as does any `.sql` file
+outside a project.
 A buffer named by a URL, such as a `fugitive://` copy of a model, is judged by
-the path after the scheme.
+the path after the scheme (see |dbt-ft-limitations|).
+
+                                                             *g:loaded_dbt_ft*
+Set `vim.g.loaded_dbt_ft = 1` before dbt-ft.nvim loads to keep `.sql` files
+out of the `dbt` filetype.
 
 ==============================================================================
 BEHAVIOUR                                                   *dbt-ft-behaviour*
 
+                                                              *dbt-ft-parsing*
 Parsing ~
-The `dbt` filetype uses the `jinja` parser. The text between Jinja tags and
-the expression inside each `{{ }}` go to the SQL parser as one document. A
-call goes as just its name, since its arguments are Jinja, such as a list SQL
-can't parse, so `from {{ ref('orders') }} where` reaches it as
-`from ref where`, and the name keeps Jinja's colour. `config()`,
-`exceptions`, `log()`, and `return()` calls render nothing, so they stay out.
-SQL reads a loop's body as one iteration, so a separator only rendered
-between iterations, such as the `,` in `{% if not loop.last %},{% endif %}`,
-stays out too. A keyword one such as `union all` goes in, to keep its colour.
-SQL reads an `{% if %}` as its first branch, so an incremental model's
-`{% else %}` doesn't give it a second `where`. The other branches, and a
-`for` loop's `{% else %}`, go to it each on its own, which keeps their colour
-where they parse alone. Other Jinja filetypes get no SQL.
+The `dbt` filetype uses the `jinja` parser. The text between Jinja tags, and
+the expression inside each `{{ }}`, go to the SQL parser as one document,
+changed in these ways so that it parses:
+- A call goes as just its name, without its package, since its arguments are
+  Jinja, which SQL can't parse. `from {{ ref('orders') }} where` reaches SQL
+  as `from ref where`, and the name keeps Jinja's colour.
+- An inline `x if condition else y` goes as `x`.
+- Calls that render nothing stay out: `config()`, `log()`, `return()`, and
+  anything on `exceptions`.
+- SQL reads a loop's body as one iteration, so a separator only rendered
+  between iterations, such as the `,` in `{% if not loop.last %},{% endif %}`,
+  stays out. A keyword separator such as `union all` goes in, to keep its
+  colour.
+- SQL reads an `{% if %}` as its first branch, so an incremental model's
+  `{% else %}` doesn't give it a second `where`. Each other branch, a `for`
+  loop's `{% else %}` included, is parsed separately, so it gets SQL's colour
+  only where it is valid SQL on its own.
 
+Other Jinja filetypes get no SQL.
+
+                                                              *dbt-ft-folding*
 Folding ~
-Jinja blocks such as `{% if %}` fold, and so do SQL statements, including the
-ones inside CTEs.
-
+With Tree-sitter folding, Jinja blocks such as `{% if %}`, Jinja comments, and
+SQL statements fold, including the statements inside CTEs. dbt-ft.nvim
+doesn't turn folding on. To do that: >lua
+    vim.wo.foldmethod = "expr"
+    vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+<
+                                                            *dbt-ft-indenting*
 Indenting ~
-Lines follow SQL's Tree-sitter indents, Jinja tags included. Without
-Tree-sitter indenting, SQL's regex indenting applies, as for `sql` buffers.
+With nvim-treesitter's 'indentexpr', lines follow SQL's Tree-sitter indents,
+Jinja tags included. Without it, SQL's regex indenting applies, as for `sql`
+buffers. dbt-ft.nvim doesn't set it. To do that: >lua
+    vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+<
 
+                                              *dbt-ft-style* *dbt-ft-sqlfluff*
 Style ~
 A model's indent and line length follow SQLFluff's config, which `dbt lint`
 and `dbt format` use too:
-- 'shiftwidth' is `tab_space_size`, or 4 without one, as dbt Labs' SQL style
-  guide and SQLFluff's defaults have it. 'softtabstop' follows it.
-- 'expandtab' is on unless `indent_unit` is `tab`. Then 'tabstop' is
-  `tab_space_size`, and 'shiftwidth' and 'softtabstop' are 0 to follow it.
-- 'textwidth' is `max_line_length`, and is left alone without one or with
-  SQLFluff's no limit of 0 or less. As you type, SQL's 'formatoptions' wrap
-  comments, not code, and |gq| wraps to it as well.
+- 'expandtab' is on, and 'shiftwidth' is `tab_space_size`, or 4 without one,
+  as dbt Labs' SQL style guide and SQLFluff's defaults have it. 'softtabstop'
+  follows it.
+- With `indent_unit = tab`, 'expandtab' is off, 'tabstop' is
+  `tab_space_size`, 'shiftwidth' is 0 to follow it, and 'softtabstop' is off.
+- 'textwidth' is `max_line_length`. It is left alone when that is unset, or
+  when it is 0 or less, which SQLFluff takes as no limit. As you type, SQL's
+  'formatoptions' wrap only comments at that width. |gq| wraps any line.
 
-Each comes from the nearest directory, from the model's up to your home
-directory, that sets it under `[tool.sqlfluff.core]` or
-`[tool.sqlfluff.indentation]` in `pyproject.toml`, or `[sqlfluff]` or
-`[sqlfluff:indentation]` in `.sqlfluff`. Within a directory `pyproject.toml`
-wins, as in SQLFluff, though dbt reads only `.sqlfluff`. SQLFluff's other
-config files aren't read.
+Each setting comes from the nearest directory that sets it, from the model's
+directory up to your home directory, or up to the filesystem's root for a
+model outside it. It is read from `[sqlfluff]` and `[sqlfluff:indentation]`
+in `.sqlfluff`, and from `[tool.sqlfluff.core]` and
+`[tool.sqlfluff.indentation]` in `pyproject.toml`. Where a directory has both
+files, `pyproject.toml` wins, as in SQLFluff, though dbt reads only
+`.sqlfluff`. SQLFluff's other config files aren't read.
 
 A project's EditorConfig overrides all of these.
 
                                                      *g:dbt_recommended_style*
 Set `vim.g.dbt_recommended_style = false`, or `0`, to keep your own settings
-for these options in `dbt` buffers.
+for these options in `dbt` buffers. It is named after Vim's own options of
+this kind, such as `g:python_recommended_style`.
 
+                                                           *dbt-ft-commenting*
 Commenting ~
 'commentstring' is `{# %s #}`. With Neovim's built-in |commenting|, a line
 that starts with a Jinja tag, indented or not, gets `{# #}`, which hides the
 tag from Jinja, and any other line gets SQL's `--`.
 
 A `--` comment continues onto the line that <CR> or |o| opens, as
-'formatoptions' has `r` and `o`. SQL's 'comments' make those continue a
-`/* */` comment with ` * ` too.
+'formatoptions' has `r` and `o`. Inside a `/* */` comment the new line starts
+with ` * `, as SQL's 'comments' has it.
 
+                                                             *dbt-ft-matching*
 Matching ~
-With |matchit|, |%| moves between Jinja block tags, such as `{% if %}`,
-`{% else %}`, and `{% endif %}`. A `for` loop's `{% else %}` isn't one of
-them.
+With |matchit|, |%| moves between the tags of a Jinja block:
+- `{% if %}`, `{% elif %}`, `{% else %}`, and `{% endif %}`.
+- `{% for %}` and `{% endfor %}`, past the loop's own `{% else %}`.
+- Each of `autoescape`, `block`, `call`, `filter`, `macro`,
+  `materialization`, `raw`, `snapshot`, `test`, and `with`, and its `end`
+  tag.
 
 ==============================================================================
-YAML                                                             *dbt-ft-yaml*
+LANGUAGE SERVERS AND TOOLS                                      *dbt-ft-tools*
 
+Language servers, formatters, and linters set up for `sql` don't run on `dbt`
+buffers, which keeps the ones that can't read Jinja off your models. Add `dbt`
+to those that can.
+
+                                                                  *dbt-ft-lsp*
+The dbt language server ~
+`dbt lsp` comes with dbt v2, not dbt-core 1.x. With nvim-lspconfig, whose
+`dbt` config already covers the `dbt` filetype, enable the server: >lua
+    vim.lsp.enable("dbt")
+<
+Without nvim-lspconfig, configure it first: >lua
+    vim.lsp.config("dbt", {
+      cmd = { "dbt", "lsp" },
+      filetypes = { "sql", "dbt" },
+      root_markers = { "dbt_project.yml" },
+    })
+<
+nvim-lspconfig's config does more: it roots the server at the outermost
+`dbt_project.yml`, as each package under `dbt_packages/` has its own, and
+turns off the server's formatting, which rewrites the file on disk.
+
+If a project's dbt 1.x comes first on your `PATH`, give the full path to dbt
+v2's `dbt` in `cmd`.
+
+                                                                 *dbt-ft-yaml*
+YAML schemas ~
 SchemaStore gives yaml-language-server most of dbt's schemas only for files
 under a directory with `dbt` in its name. When the server attaches to a
 buffer in a dbt project, dbt-ft.nvim adds that project's files to its schema
@@ -134,9 +193,22 @@ mappings. The YAML under `macros/`, `models/`, `seeds/`, and `snapshots/`,
 and `catalogs.yml`, `dbt_project.yml`, `dependencies.yml`, `packages.yml`,
 and `selectors.yml` then get dbt's validation, completion, and hover.
 
+The server is known by the name it reports, which it does from 1.20.0, or by
+a client named `yamlls`, as nvim-lspconfig calls it.
+
                                                        *g:dbt_ft_yaml_schemas*
 Set `vim.g.dbt_ft_yaml_schemas = false`, or `0`, to leave
 yaml-language-server's schema mappings alone.
+
+==============================================================================
+HEALTH                                                         *dbt-ft-health*
+
+`:checkhealth dbt-ft` reports whether Neovim is new enough, the `dbt`
+filetype uses the `jinja` parser, the three parsers are installed, and
+dbt-ft.nvim's `jinja` queries load. Once the `dbt` language server is
+enabled, it also checks that the server's config lists the `dbt` filetype
+and, where its `cmd` is a program followed by `lsp`, that the program has
+that command. It warns when dbtpal is loaded (see |dbt-ft-limitations|).
 
 ==============================================================================
 LIMITATIONS                                               *dbt-ft-limitations*
@@ -145,11 +217,14 @@ LIMITATIONS                                               *dbt-ft-limitations*
   `materialization` blocks, so those show parse errors.
 - dbtpal sets 'filetype' to `sql` on every `.sql` file it reads, which
   replaces `dbt`.
+- A `fugitive://` buffer's path runs through `.git`, not the work tree, so a
+  model in a project below the repository's root isn't `dbt`, and a SQLFluff
+  config between the root and the model isn't read.
 - A picker preview that starts Tree-sitter without setting 'filetype' to
   `dbt`, such as snacks.nvim's, shows a model's Jinja highlighted but not
   its SQL, since only `dbt` buffers get the SQL.
-- A model is parsed in full when it opens, so its SQL folds are there from
-  the start. On very large models that parse, and the one after each edit,
-  cost more than for plain SQL, mostly in the Jinja parser.
+- Opening a model parses all of it, so that its SQL folds are there from the
+  start. On a very large model that parse, and the one after each edit, is
+  slower than for plain SQL, mostly in the Jinja parser.
 
  vim:tw=78:ts=8:noet:ft=help:norl:
