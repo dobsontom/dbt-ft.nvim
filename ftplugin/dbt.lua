@@ -5,27 +5,34 @@ end
 vim.cmd("runtime! ftplugin/sql[.]{vim,lua} ftplugin/sql_*.{vim,lua} ftplugin/sql/*.{vim,lua}")
 
 vim.bo.commentstring = "{# %s #}"
--- SQL's 'comments' stay, though they continue a /* */ comment with ` * `:
--- without their s1:/*,mb:*,ex:*/ entry, gq flattens a starred block.
+-- `r` and `o` also continue a /* */ comment with ` * `, through the
+-- s1:/*,mb:*,ex:*/ entry in SQL's 'comments'. That entry stays, as gq flattens
+-- a starred block without it.
 vim.opt_local.formatoptions:append("ro")
 
 local dbt_ft = require("dbt-ft")
 if dbt_ft.enabled("dbt_recommended_style") then
+  local function positive(value)
+    local number = tonumber(value)
+    return number and number > 0 and number
+  end
   local model = dbt_ft.buf_path(0)
   local sqlfluff = model and require("dbt-ft.sqlfluff").settings(model) or {}
-  local indent = tonumber(sqlfluff.tab_space_size)
-  indent = indent and indent > 0 and indent or 4
-  local tabs = sqlfluff.indent_unit == "tab"
-  vim.bo.expandtab = not tabs
-  -- With tabs, SQLFluff's indent is one tab and tab_space_size its width.
-  vim.bo.shiftwidth = tabs and 0 or indent
-  vim.bo.softtabstop = tabs and 0 or -1
-  if tabs then
+  local indent = positive(sqlfluff.tab_space_size) or 4
+  if sqlfluff.indent_unit == "tab" then
+    -- SQLFluff's indent is then one tab, and tab_space_size its width.
+    vim.bo.expandtab = false
     vim.bo.tabstop = indent
+    vim.bo.shiftwidth = 0
+    vim.bo.softtabstop = 0
+  else
+    vim.bo.expandtab = true
+    vim.bo.shiftwidth = indent
+    vim.bo.softtabstop = -1
   end
-  local length = tonumber(sqlfluff.max_line_length)
   -- SQLFluff takes zero or less as no limit.
-  if length and length > 0 then
+  local length = positive(sqlfluff.max_line_length)
+  if length then
     vim.bo.textwidth = length
   end
   vim.b.undo_ftplugin = (vim.b.undo_ftplugin or "") .. "\n setl et< sw< sts< ts< tw<"
@@ -34,18 +41,19 @@ end
 -- A lookbehind, so a match starts at the keyword rather than at a `{`, which
 -- the next % would take for a brace.
 local tag = [[\%({%[-+]\=\s*\)\@<=]]
-local jinja = {
-  tag .. [[if\>:]] .. tag .. [[el\%(if\|se\)\>:]] .. tag .. [[endif\>]],
+local function words(...)
+  return tag .. table.concat({ ... }, [[\>:]] .. tag) .. [[\>]]
+end
+local match_words = {
+  words("if", [[\%(elif\|else\)]], "endif"),
   -- No else: sharing it with if sends % from a {% for %} to the {% else %}
   -- of an if inside the loop.
-  tag .. [[for\>:]] .. tag .. [[endfor\>]],
-  tag
-    .. [[\(autoescape\|block\|call\|filter\|macro\|raw\|with\|materialization\|snapshot\|test\)\>:]]
-    .. tag
-    .. [[end\1\>]],
+  words("for", "endfor"),
+  words([[\(autoescape\|block\|call\|filter\|macro\|raw\|with\|materialization\|snapshot\|test\)]], [[end\1]]),
 }
 -- SQL's words include a bare \<if\>, so Jinja's go first to win on `{% if %}`.
-vim.b.match_words = table.concat(jinja, ",") .. (vim.b.match_words and "," .. vim.b.match_words or "")
+match_words[#match_words + 1] = vim.b.match_words
+vim.b.match_words = table.concat(match_words, ",")
 
 -- Tree-sitter folds only hear of changes to the root Jinja tree, so the SQL
 -- has to be parsed before they are first computed, or the model opens with
