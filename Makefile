@@ -6,6 +6,7 @@ PARSER_DIR := $(DBT_FT_TS_DIR)/parser
 PARSERS := $(addprefix $(PARSER_DIR)/,jinja.so jinja_inline.so sql.so)
 
 .PHONY: format lint test
+.DEFAULT_GOAL := test
 
 format:
 	stylua .
