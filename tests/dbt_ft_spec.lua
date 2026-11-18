@@ -365,6 +365,17 @@ test("comments a line starting with a Jinja tag as Jinja, indented or not, and S
   end
 end)
 
+test("continues a -- comment onto the line <CR> or o opens", function()
+  local buf = open("project/models/orders.sql")
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "-- per customer", "    -- per day" })
+  vim.cmd([[execute "normal 1GA\<CR>and hour\<Esc>3Goand week"]])
+  eq(
+    vim.api.nvim_buf_get_lines(buf, 0, -1, false),
+    { "-- per customer", "-- and hour", "    -- per day", "    -- and week" },
+    "lines"
+  )
+end)
+
 test("uses Jinja's comment string on top of SQL's buffer settings", function()
   local buf = open("project/models/orders.sql")
   eq(vim.bo[buf].commentstring, "{# %s #}", "commentstring")

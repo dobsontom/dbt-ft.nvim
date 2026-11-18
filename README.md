@@ -22,6 +22,7 @@ There are no commands or setup function.
   where it sets no indent. A project's EditorConfig overrides both, and
   `vim.g.dbt_recommended_style = false` turns both off.
 - `gc` uses `{# #}` on a line that starts with a Jinja tag, indented or not, and `--` elsewhere.
+- A `--` comment continues onto the next line.
 - With matchit, `%` moves between Jinja block tags.
 - With yaml-language-server, a project's YAML gets dbt's schemas for validation, completion, and
   hover, even when the project's directory doesn't have `dbt` in its name.
