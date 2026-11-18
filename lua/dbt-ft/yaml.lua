@@ -15,13 +15,14 @@ local files = {
 ---@param client vim.lsp.Client
 ---@param buf integer
 function M.attach(client, buf)
+  local dbt_ft = require("dbt-ft")
   local server = client.server_info and client.server_info.name
   -- yaml-language-server reports its name only from 1.20.0.
-  if (server ~= "yaml-language-server" and client.name ~= "yamlls") or vim.g.dbt_ft_yaml_schemas == false then
+  if (server ~= "yaml-language-server" and client.name ~= "yamlls") or not dbt_ft.enabled("dbt_ft_yaml_schemas") then
     return
   end
   local name = vim.api.nvim_buf_get_name(buf)
-  local root = name ~= "" and not name:find("^%a[%w+.-]*://") and require("dbt-ft").root(name)
+  local root = name ~= "" and not name:find("^%a[%w+.-]*://") and dbt_ft.root(name)
   if not root then
     return
   end

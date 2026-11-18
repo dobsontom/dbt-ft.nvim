@@ -24,4 +24,11 @@ function M.detect(path)
   return "dbt"
 end
 
+---@param option string
+---@return boolean
+function M.enabled(option)
+  local value = vim.g[option]
+  return value ~= false and value ~= 0
+end
+
 return M

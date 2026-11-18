@@ -6,8 +6,8 @@ vim.cmd("runtime! ftplugin/sql[.]{vim,lua} ftplugin/sql_*.{vim,lua} ftplugin/sql
 
 vim.bo.commentstring = "{# %s #}"
 
-local style = vim.g.dbt_recommended_style
-if style ~= false and style ~= 0 then
+local dbt_ft = require("dbt-ft")
+if dbt_ft.enabled("dbt_recommended_style") then
   vim.bo.expandtab = true
   vim.bo.shiftwidth = 4
   vim.bo.softtabstop = -1
