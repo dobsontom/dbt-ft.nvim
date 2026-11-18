@@ -369,6 +369,7 @@ test("leaves yamlls alone outside a project, for other servers, and when turned 
     ["another server"] = { "jsonls", "project/packages.yml" },
     ["outside a project"] = { "yamlls", "settings.yml" },
     ["turned off"] = { "yamlls", "project/packages.yml", false },
+    ["turned off with 0"] = { "yamlls", "project/packages.yml", 0 },
     ["yamlls in a project"] = { "yamlls", "project/packages.yml" },
   }) do
     local client, sent = yaml_client(case[1], {})
@@ -376,11 +377,13 @@ test("leaves yamlls alone outside a project, for other servers, and when turned 
     vim.lsp.buf_attach_client(open(case[2]), client.id)
     got[what] = #sent
   end
-  eq(
-    got,
-    { ["another server"] = 0, ["outside a project"] = 0, ["turned off"] = 0, ["yamlls in a project"] = 1 },
-    "notifications"
-  )
+  eq(got, {
+    ["another server"] = 0,
+    ["outside a project"] = 0,
+    ["turned off"] = 0,
+    ["turned off with 0"] = 0,
+    ["yamlls in a project"] = 1,
+  }, "notifications")
 end)
 
 test("has help tags that build", function()

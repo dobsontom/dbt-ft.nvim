@@ -115,8 +115,8 @@ and `catalogs.yml`, `dbt_project.yml`, `dependencies.yml`, `packages.yml`,
 and `selectors.yml` then get dbt's validation, completion, and hover.
 
                                                        *g:dbt_ft_yaml_schemas*
-Set `vim.g.dbt_ft_yaml_schemas = false` to leave yaml-language-server's schema
-mappings alone.
+Set `vim.g.dbt_ft_yaml_schemas = false`, or `0`, to leave
+yaml-language-server's schema mappings alone.
 
 ==============================================================================
 LIMITATIONS                                               *dbt-ft-limitations*
