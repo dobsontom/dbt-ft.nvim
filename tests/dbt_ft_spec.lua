@@ -99,6 +99,29 @@ local function nvim(lua, ...)
   })
 end
 
+test("turns off with vim.g.loaded_dbt_ft, but keeps Jinja templates parsing", function()
+  local model = vim.fs.joinpath(fixtures, "project", "models", "orders.sql")
+  local template = vim.fs.joinpath(fixtures, "template.jinja")
+  local function state(...)
+    return nvim(
+      ([[vim.cmd.edit(%q)
+      io.write(vim.json.encode({
+        vim.filetype.match({ filename = %q }),
+        vim.treesitter.language.get_lang("dbt"),
+        vim.fn.exists("#dbt-ft.yaml#LspAttach"),
+        (pcall(function() vim.treesitter.get_parser():parse(true) end)),
+      }))]]):format(template, model),
+      ...
+    )
+  end
+  local off, on = state("--cmd", "let g:loaded_dbt_ft = 1"), state()
+  eq(
+    { off = off:wait().stdout, on = on:wait().stdout },
+    { off = '["sql","dbt",0,true]', on = '["dbt","jinja",1,true]' },
+    "filetype, parser, YAML hook, and a template's parse"
+  )
+end)
+
 test("detects dbt models, and leaves compiled output and other SQL as sql", function()
   for rel, ft in pairs({
     ["plain.sql"] = "sql",
@@ -110,19 +133,6 @@ test("detects dbt models, and leaves compiled output and other SQL as sql", func
   }) do
     eq(vim.filetype.match({ filename = vim.fs.joinpath(fixtures, rel) }), ft, rel)
   end
-end)
-
-test("leaves models as sql when vim.g.loaded_dbt_ft is set first", function()
-  local model = vim.fs.joinpath(fixtures, "project", "models", "orders.sql")
-  local function filetype(...)
-    return nvim(("io.write(vim.filetype.match({ filename = %q }))"):format(model), ...)
-  end
-  local guarded, unguarded = filetype("--cmd", "let g:loaded_dbt_ft = 1"), filetype()
-  eq(
-    { guarded = guarded:wait().stdout, unguarded = unguarded:wait().stdout },
-    { guarded = "sql", unguarded = "dbt" },
-    "filetype"
-  )
 end)
 
 test("detects a URL by the path after its scheme, not the current directory", function()
@@ -491,7 +501,7 @@ local function health(setup)
  local buf, report = vim.api.nvim_get_current_buf(), ""
  vim.wait(10000, function()
    report = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
-   return report:find("language server", 1, true) ~= nil
+   return report:find("language server", 1, true) or report:find("turned off", 1, true)
  end, 50)
  io.write(report)]])
 end
@@ -528,6 +538,7 @@ test("reports healthy, and checks the dbt language server only once it's enabled
     ["not enabled"] = { setup = config({ dbt1, "lsp" }), line = "The `dbt` language server isn't enabled" },
     ["nothing set up"] = { setup = "", line = "OK `jinja` injections query loads" },
     ["other server"] = { setup = config({ other, "--stdio" }) .. enable, line = covered },
+    ["turned off"] = { setup = "vim.g.loaded_dbt_ft = 1", line = "dbt-ft.nvim is turned off by `g:loaded_dbt_ft`" },
   }
   -- Started together, then awaited, so the reports are built side by side.
   local runs = vim.tbl_map(function(case)

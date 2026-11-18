@@ -1,5 +1,3 @@
-vim.treesitter.language.register("jinja", "dbt")
-
 -- Every Jinja filetype shares the `jinja` queries, so this keeps the SQL
 -- injection to dbt buffers. It's a predicate rather than a directive so that in
 -- other Jinja buffers a match stops here, before any text is read.
@@ -20,6 +18,16 @@ vim.treesitter.query.add_directive("dbt-sql-range!", function(match, _, source, 
     metadata[id] = { range = range }
   end
 end, { force = true })
+
+-- Below the handlers, which the `jinja` queries call even with the plugin off.
+-- Only the user sets the flag: this file and ftdetect/ are both safe to run
+-- twice, so neither needs a load guard, and if either set it, the other would
+-- read it as turned off.
+if vim.g.loaded_dbt_ft then
+  return
+end
+
+vim.treesitter.language.register("jinja", "dbt")
 
 vim.api.nvim_create_autocmd("LspAttach", {
   group = vim.api.nvim_create_augroup("dbt-ft.yaml", {}),

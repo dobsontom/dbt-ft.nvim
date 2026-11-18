@@ -90,7 +90,7 @@ Run `:checkhealth dbt-ft` to check the setup.
 | ----------------------------- | -------------------- | ------------------------------------------------------- |
 | `vim.g.dbt_ft_yaml_schemas`   | `false` or `0`       | leave yaml-language-server's schema mappings alone      |
 | `vim.g.dbt_recommended_style` | `false` or `0`       | keep your own indent and `'textwidth'` in `dbt` buffers |
-| `vim.g.loaded_dbt_ft`         | `1`, before it loads | keep `.sql` files out of the `dbt` filetype             |
+| `vim.g.loaded_dbt_ft`         | `1`, before it loads | turn dbt-ft.nvim off                                    |
 
 ## Development
 

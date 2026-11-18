@@ -90,6 +90,10 @@ end
 
 function M.check()
   health.start("dbt-ft")
+  if vim.g.loaded_dbt_ft then
+    health.info("dbt-ft.nvim is turned off by `g:loaded_dbt_ft`")
+    return
+  end
   if vim.fn.has("nvim-0.12") == 0 then
     health.error("Neovim 0.12 or later is required")
     return

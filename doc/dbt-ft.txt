@@ -32,6 +32,11 @@ Loading ~
 Don't lazy-load dbt-ft.nvim. It does almost nothing at startup, and it can't
 load on the `dbt` filetype, which only it detects.
 
+                                                             *g:loaded_dbt_ft*
+Set `vim.g.loaded_dbt_ft = 1` before dbt-ft.nvim loads to turn it off. Its
+additions to the `jinja` queries, such as folds for Jinja blocks, still apply
+to Jinja buffers, as Neovim loads every query on the 'runtimepath'.
+
                                                            *dbt-ft-treesitter*
 Starting Tree-sitter ~
 LazyVim starts Tree-sitter for `dbt` buffers by itself. If your config starts
@@ -52,7 +57,7 @@ OPTIONS                                                       *dbt-ft-options*
 
 |g:dbt_ft_yaml_schemas|    dbt's schemas for a project's YAML.
 |g:dbt_recommended_style|  The indent and 'textwidth' of `dbt` buffers.
-|g:loaded_dbt_ft|          Detecting `.sql` files as `dbt`.
+|g:loaded_dbt_ft|          Turning dbt-ft.nvim off.
 
 ==============================================================================
 DETECTION                                                   *dbt-ft-detection*
@@ -64,10 +69,6 @@ output under the project's `target/` stays `sql`, as does any `.sql` file
 outside a project.
 A buffer named by a URL, such as a `fugitive://` copy of a model, is judged by
 the path after the scheme (see |dbt-ft-limitations|).
-
-                                                             *g:loaded_dbt_ft*
-Set `vim.g.loaded_dbt_ft = 1` before dbt-ft.nvim loads to keep `.sql` files
-out of the `dbt` filetype.
 
 ==============================================================================
 BEHAVIOUR                                                   *dbt-ft-behaviour*
