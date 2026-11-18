@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.1.1...v1.2.0) (2026-11-18)
+
+
+### Features
+
+* **ftplugin:** indent dbt buffers by four spaces, unless g:dbt_recommended_style is off ([d7c4539](https://github.com/dobsontom/dbt-ft.nvim/commit/d7c4539ac80e9278146cbb112c4b8853c619e13f))
+
 ## [1.1.1](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.1.0...v1.1.1) (2026-11-10)
 
 
