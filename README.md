@@ -18,8 +18,9 @@ There are no commands or setup function.
 - The text between Jinja tags and each `{{ }}` expression go to the SQL parser as one document, so
   `from {{ ref('orders') }} where` parses as SQL.
 - Jinja blocks fold, and SQL keeps its Tree-sitter folds and indents.
-- Indents are four spaces, as dbt Labs' style guide and SQLFluff's defaults have it, unless a
-  project's EditorConfig says otherwise.
+- The indent and `'textwidth'` follow the project's SQLFluff config, with dbt Labs' four spaces
+  where it sets no indent. A project's EditorConfig overrides both, and
+  `vim.g.dbt_recommended_style = false` turns both off.
 - `gc` uses `{# #}` on a line that starts with a Jinja tag, indented or not, and `--` elsewhere.
 - With matchit, `%` moves between Jinja block tags.
 - With yaml-language-server, a project's YAML gets dbt's schemas for validation, completion, and

@@ -33,9 +33,10 @@ local function eq(actual, expected, what)
   end
 end
 
-local function open(rel, with_treesitter)
+local function open(path, with_treesitter)
   vim.cmd("silent! %bwipeout!")
-  vim.cmd.edit(vim.fn.fnameescape(vim.fs.joinpath(fixtures, rel)))
+  local whole = vim.fn.isabsolutepath(path) == 1 or path:find("://", 1, true)
+  vim.cmd.edit(vim.fn.fnameescape(whole and path or vim.fs.joinpath(fixtures, path)))
   local buf = vim.api.nvim_get_current_buf()
   if with_treesitter then
     vim.treesitter.start(buf)
@@ -76,6 +77,12 @@ local function sql_parses(buf, what)
   for _, tree in ipairs(vim.treesitter.get_parser(buf):children().sql:trees()) do
     assert(not tree:root():has_error(), what .. " reached SQL: " .. tree:root():sexpr())
   end
+end
+
+local style_options = "expandtab, shiftwidth, softtabstop, tabstop, textwidth"
+
+local function style()
+  return { vim.bo.expandtab, vim.bo.shiftwidth, vim.bo.softtabstop, vim.bo.tabstop, vim.bo.textwidth }
 end
 
 -- A real client of an in-process server, so attaching it runs the plugin's
@@ -272,13 +279,10 @@ test("indents dbt buffers by SQL's rules and leaves other Jinja to autoindent", 
   end
 end)
 
-test("indents by four spaces until 'filetype' changes, unless turned off", function()
+test("sets dbt's indent and the project's line length until 'filetype' changes, unless turned off", function()
   defer(function()
     vim.g.dbt_recommended_style = nil
   end)
-  local function style()
-    return { vim.bo.expandtab, vim.bo.shiftwidth, vim.bo.softtabstop }
-  end
   local got = {}
   open("project/models/orders.sql")
   got.on = style()
@@ -287,11 +291,65 @@ test("indents by four spaces until 'filetype' changes, unless turned off", funct
   vim.g.dbt_recommended_style = false
   vim.bo.filetype = "dbt"
   got.off = style()
-  eq(
-    got,
-    { on = { true, 4, -1 }, undone = { false, 8, 0 }, off = { false, 8, 0 } },
-    "expandtab, shiftwidth, softtabstop"
-  )
+  eq(got, { on = { true, 4, -1, 8, 100 }, undone = { false, 8, 0, 8, 0 }, off = { false, 8, 0, 8, 0 } }, style_options)
+end)
+
+test("takes each style setting from the nearest SQLFluff config at or above the model, pyproject.toml first", function()
+  local pyproject =
+    '[tool.ruff]\nmax_line_length = 60\n\n[tool.sqlfluff.core]\ndialect = "snowflake"\nmax_line_length = 120'
+  local sqlfluff = "[sqlfluff:rules:layout.long_lines]\nmax_line_length = 70\n\n[sqlfluff]\nmax_line_length = 100"
+  local tabs = "[tool.sqlfluff.indentation]\nindent_unit = 'tab'\ntab_space_size = 6"
+  local two_spaces = "[sqlfluff]\ntab_space_size = 3\n\n[sqlfluff:indentation]\ntab_space_size = 2"
+  local home = vim.env.HOME
+  defer(function()
+    vim.env.HOME = home
+  end)
+  local function open_model(files, home_in_repo)
+    local repo = vim.fn.tempname()
+    defer(function()
+      vim.fn.delete(repo, "rf")
+    end)
+    vim.fn.mkdir(vim.fs.joinpath(repo, "dbt", "models"), "p")
+    files["dbt/dbt_project.yml"], files["dbt/models/orders.sql"] = "", "select 1"
+    for rel, text in pairs(files) do
+      vim.fn.writefile(vim.split(text, "\n"), vim.fs.joinpath(repo, rel))
+    end
+    vim.env.HOME = home_in_repo and vim.fs.joinpath(repo, home_in_repo) or home
+    open(vim.fs.joinpath(repo, "dbt", "models", "orders.sql"))
+    return style()
+  end
+  local got = {
+    above = open_model({ [".sqlfluff"] = sqlfluff }),
+    ["above home"] = open_model({ [".sqlfluff"] = sqlfluff }, "dbt"),
+    beside = open_model({ ["dbt/pyproject.toml"] = pyproject, ["dbt/.sqlfluff"] = sqlfluff }),
+    ["indent and length from different files"] = open_model({
+      ["pyproject.toml"] = pyproject,
+      ["dbt/.sqlfluff"] = two_spaces,
+    }),
+    nearer = open_model({ ["pyproject.toml"] = pyproject, ["dbt/models/.sqlfluff"] = sqlfluff }),
+    ["nearer with no limit"] = open_model({
+      ["pyproject.toml"] = pyproject,
+      ["dbt/.sqlfluff"] = "[sqlfluff]\nmax_line_length = -1",
+    }),
+  }
+  got.tabs = open_model({ ["dbt/pyproject.toml"] = tabs })
+  vim.bo.filetype = "sql"
+  got["tabs undone"] = style()
+  eq(got, {
+    above = { true, 4, -1, 8, 100 },
+    ["above home"] = { true, 4, -1, 8, 0 },
+    beside = { true, 4, -1, 8, 120 },
+    ["indent and length from different files"] = { true, 2, -1, 8, 120 },
+    nearer = { true, 4, -1, 8, 100 },
+    ["nearer with no limit"] = { true, 4, -1, 8, 0 },
+    tabs = { false, 0, 0, 6, 0 },
+    ["tabs undone"] = { false, 8, 0, 8, 0 },
+  }, style_options)
+end)
+
+test("takes a URL buffer's 'textwidth' from the project its path is in", function()
+  open("fugitive://" .. fixtures .. "/project/.git//0/models/orders.sql")
+  eq({ vim.bo.filetype, vim.bo.textwidth }, { "dbt", 100 }, "filetype and textwidth")
 end)
 
 test("comments a line starting with a Jinja tag as Jinja, indented or not, and SQL as SQL", function()

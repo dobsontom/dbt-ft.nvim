@@ -8,10 +8,24 @@ vim.bo.commentstring = "{# %s #}"
 
 local dbt_ft = require("dbt-ft")
 if dbt_ft.enabled("dbt_recommended_style") then
-  vim.bo.expandtab = true
-  vim.bo.shiftwidth = 4
-  vim.bo.softtabstop = -1
-  vim.b.undo_ftplugin = (vim.b.undo_ftplugin or "") .. "\n setl et< sw< sts<"
+  local model = dbt_ft.buf_path(0)
+  local sqlfluff = model and require("dbt-ft.sqlfluff").settings(model) or {}
+  local indent = tonumber(sqlfluff.tab_space_size)
+  indent = indent and indent > 0 and indent or 4
+  local tabs = sqlfluff.indent_unit == "tab"
+  vim.bo.expandtab = not tabs
+  -- With tabs, SQLFluff's indent is one tab and tab_space_size its width.
+  vim.bo.shiftwidth = tabs and 0 or indent
+  vim.bo.softtabstop = tabs and 0 or -1
+  if tabs then
+    vim.bo.tabstop = indent
+  end
+  local length = tonumber(sqlfluff.max_line_length)
+  -- SQLFluff takes zero or less as no limit.
+  if length and length > 0 then
+    vim.bo.textwidth = length
+  end
+  vim.b.undo_ftplugin = (vim.b.undo_ftplugin or "") .. "\n setl et< sw< sts< ts< tw<"
 end
 
 -- A lookbehind, so a match starts at the keyword rather than at a `{`, which
