@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.2.0...v1.3.0) (2026-11-18)
+
+
+### Features
+
+* **ftplugin:** continue a -- comment onto the line `<CR>` or `o` opens ([2648712](https://github.com/dobsontom/dbt-ft.nvim/commit/264871233b085de17b942a143a489f695120da61))
+* **ftplugin:** take the indent and 'textwidth' from the nearest SQLFluff config ([6ac6640](https://github.com/dobsontom/dbt-ft.nvim/commit/6ac66401b3160317cbe0ac563786f32ff49d4b99))
+
+
+### Bug Fixes
+
+* **yaml:** leave yamlls's schema mappings alone when g:dbt_ft_yaml_schemas is 0, as when it is false ([41fc730](https://github.com/dobsontom/dbt-ft.nvim/commit/41fc730a78da0e7fee83d0a94a4d83e71b25b863))
+
 ## [1.2.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.1.1...v1.2.0) (2026-11-18)
 
 
