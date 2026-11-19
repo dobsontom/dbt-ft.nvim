@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.2.0...v1.3.0) (2026-11-19)
+
+
+### Features
+
+* **gf:** open the model a ref() names with gf, from the project's model-paths and packages ([ccbd5b7](https://github.com/dobsontom/dbt-ft.nvim/commit/ccbd5b707d5328ae78e910507353eba528e3c472))
+* **highlights:** show dbt's functions and context variables as built-ins in dbt buffers ([748e531](https://github.com/dobsontom/dbt-ft.nvim/commit/748e5313bc48d909de4912e24971e62386f5e8b1))
+
+
+### Bug Fixes
+
+* **dbtpal:** keep models dbt while dbtpal is loaded ([e21aa78](https://github.com/dobsontom/dbt-ft.nvim/commit/e21aa78de5ce9bd9ee3a6474af9b68aa8f932c3b))
+
 ## [1.2.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.1.1...v1.2.0) (2026-11-18)
 
 
