@@ -70,6 +70,11 @@ outside a project.
 A buffer named by a URL, such as a `fugitive://` copy of a model, is judged by
 the path after the scheme (see |dbt-ft-limitations|).
 
+                                                               *dbt-ft-dbtpal*
+dbtpal sets 'filetype' to `sql` on every `.sql` file it reads. While it's
+loaded, dbt-ft.nvim sets models back to `dbt`, so `:set filetype=sql` on a
+model turns back to `dbt` as well.
+
 ==============================================================================
 BEHAVIOUR                                                   *dbt-ft-behaviour*
 
@@ -276,15 +281,13 @@ filetype uses the `jinja` parser, the three parsers are installed, and
 dbt-ft.nvim's `jinja` queries load. Once the `dbt` language server is
 enabled, it also checks that the server's config lists the `dbt` filetype
 and, where its `cmd` is a program followed by `lsp`, that the program has
-that command. It warns when dbtpal is loaded (see |dbt-ft-limitations|).
+that command.
 
 ==============================================================================
 LIMITATIONS                                               *dbt-ft-limitations*
 
 - The Jinja parser doesn't know dbt's own `snapshot`, `test`, and
   `materialization` blocks, so those show parse errors.
-- dbtpal sets 'filetype' to `sql` on every `.sql` file it reads, which
-  replaces `dbt`.
 - A `fugitive://` buffer's path runs through `.git`, not the work tree, so a
   model in a project below the repository's root isn't `dbt`, and a SQLFluff
   config between the root and the model isn't read.

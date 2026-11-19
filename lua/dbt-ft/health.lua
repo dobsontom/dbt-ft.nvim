@@ -82,12 +82,6 @@ local function check_lsp()
   end
 end
 
-local function check_dbtpal()
-  if vim.fn.exists("#dbtPal#BufRead") == 1 then
-    health.warn("dbtpal is loaded, and it sets 'filetype' to `sql` on every `.sql` file it reads, which replaces `dbt`")
-  end
-end
-
 function M.check()
   health.start("dbt-ft")
   if vim.g.loaded_dbt_ft then
@@ -101,7 +95,6 @@ function M.check()
   health.ok("Neovim " .. tostring(vim.version()))
   check_treesitter()
   check_lsp()
-  check_dbtpal()
 end
 
 return M

@@ -85,9 +85,6 @@ vim.lsp.enable("dbt")
 
 See [`:help dbt-ft-lsp`](doc/dbt-ft.txt) for setting it up without nvim-lspconfig.
 
-[dbtpal](https://github.com/PedramNavid/dbtpal) sets `'filetype'` back to `sql` on every `.sql` file
-it reads, so the two don't work together.
-
 Run `:checkhealth dbt-ft` to check the setup.
 
 ## Options

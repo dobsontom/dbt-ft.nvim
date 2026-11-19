@@ -37,6 +37,22 @@ if vim.g.loaded_dbt_ft then
   return
 end
 
+vim.api.nvim_create_autocmd("FileType", {
+  group = vim.api.nvim_create_augroup("dbt-ft.dbtpal", {}),
+  pattern = "sql",
+  callback = function(args)
+    -- Looked for here, not at load, as dbtpal may load after this file.
+    if vim.fn.exists("#dbtPal#BufRead") == 0 then
+      return
+    end
+    local dbt_ft = require("dbt-ft")
+    local path = dbt_ft.buf_path(args.buf)
+    if path and dbt_ft.detect(path) then
+      vim.bo[args.buf].filetype = "dbt"
+    end
+  end,
+})
+
 vim.treesitter.language.register("jinja", "dbt")
 
 vim.api.nvim_create_autocmd("LspAttach", {

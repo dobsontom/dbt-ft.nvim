@@ -175,6 +175,31 @@ test("detects a URL by the path after its scheme, not the current directory", fu
   end
 end)
 
+test("keeps models dbt while dbtpal is loaded, and leaves other SQL and setups without it alone", function()
+  local got = {}
+  open("project/models/orders.sql")
+  vim.bo.filetype = "sql"
+  got["model set to sql without dbtpal"] = vim.bo.filetype
+  local group = vim.api.nvim_create_augroup("dbtPal", {})
+  defer(function()
+    vim.api.nvim_del_augroup_by_id(group)
+  end)
+  -- dbtpal's own autocmd, as its lua/dbtpal/files.lua sets it up without its
+  -- custom syntax.
+  vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
+    group = group,
+    pattern = { "*.sql" },
+    callback = function()
+      vim.bo.filetype = "sql"
+    end,
+  })
+  open("project/models/orders.sql")
+  got.model = vim.bo.filetype
+  open("plain.sql")
+  got.plain = vim.bo.filetype
+  eq(got, { model = "dbt", plain = "sql", ["model set to sql without dbtpal"] = "sql" }, "filetypes")
+end)
+
 test("injects SQL into dbt buffers, {{ }} expressions included", function()
   local buf = open("project/models/orders.sql", true)
   local parser = assert(vim.treesitter.get_parser(buf))
