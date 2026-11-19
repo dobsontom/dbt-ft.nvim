@@ -11,12 +11,12 @@ vim.bo.commentstring = "{# %s #}"
 vim.opt_local.formatoptions:append("ro")
 
 local dbt_ft = require("dbt-ft")
+local model = dbt_ft.buf_path(0)
 if dbt_ft.enabled("dbt_recommended_style") then
   local function positive(value)
     local number = tonumber(value)
     return number and number > 0 and number
   end
-  local model = dbt_ft.buf_path(0)
   local sqlfluff = model and require("dbt-ft.sqlfluff").settings(model) or {}
   local indent = positive(sqlfluff.tab_space_size) or 4
   if sqlfluff.indent_unit == "tab" then
@@ -54,6 +54,14 @@ local match_words = {
 -- SQL's words include a bare \<if\>, so Jinja's go first to win on `{% if %}`.
 match_words[#match_words + 1] = vim.b.match_words
 vim.b.match_words = table.concat(match_words, ",")
+
+local root = model and dbt_ft.root(model)
+if root then
+  vim.bo.path = require("dbt-ft.gf").path(root) .. "," .. vim.o.path
+  vim.opt_local.suffixesadd:prepend(".sql")
+  vim.bo.includeexpr = "v:lua.require'dbt-ft.gf'.includeexpr()"
+  vim.b.undo_ftplugin = (vim.b.undo_ftplugin or "") .. "\n setl pa< sua< inex<"
+end
 
 -- Tree-sitter folds only hear of changes to the root Jinja tree, so the SQL
 -- has to be parsed before they are first computed, or the model opens with

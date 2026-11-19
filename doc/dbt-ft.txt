@@ -161,6 +161,19 @@ With |matchit|, |%| moves between the tags of a Jinja block:
   `materialization`, `raw`, `snapshot`, `test`, and `with`, and its `end`
   tag.
 
+                                                                   *dbt-ft-gf*
+Going to a model ~
+|gf| on a `ref()` opens the model it names, with the cursor anywhere in the
+call, even on `ref` or a package name. It looks in the directories
+`dbt_project.yml` lists under `model-paths`, or `models` where it lists none,
+then in each package's `models` under `dbt_packages`. |:find| takes a model's
+name the same way.
+
+Only models are reached, as sources are declared in YAML and macros sit in
+files named for something else. A versioned model's `ref('orders', v=2)`
+looks for `orders.sql`, not `orders_v2.sql`. With dbt v2, use the language
+server's go to definition instead (see |dbt-ft-lsp|).
+
 ==============================================================================
 LANGUAGE SERVERS AND TOOLS                                      *dbt-ft-tools*
 

@@ -41,6 +41,15 @@ local function tmpdir()
   return dir
 end
 
+---@param files table<string, string>
+local function write_files(dir, files)
+  for rel, text in pairs(files) do
+    local path = vim.fs.joinpath(dir, rel)
+    vim.fn.mkdir(vim.fs.dirname(path), "p")
+    vim.fn.writefile(vim.split(text, "\n"), path)
+  end
+end
+
 local function open(path, with_treesitter)
   vim.cmd("silent! %bwipeout!")
   local whole = vim.fn.isabsolutepath(path) == 1 or path:find("://", 1, true)
@@ -307,11 +316,10 @@ end)
 ---@return string repo
 local function temp_repo(files)
   local repo = tmpdir()
-  vim.fn.mkdir(vim.fs.joinpath(repo, "dbt", "models"), "p")
-  files = vim.tbl_extend("error", files, { ["dbt/dbt_project.yml"] = "", ["dbt/models/orders.sql"] = "select 1" })
-  for rel, text in pairs(files) do
-    vim.fn.writefile(vim.split(text, "\n"), vim.fs.joinpath(repo, rel))
-  end
+  write_files(
+    repo,
+    vim.tbl_extend("error", files, { ["dbt/dbt_project.yml"] = "", ["dbt/models/orders.sql"] = "select 1" })
+  )
   return vim.fs.joinpath(repo, "dbt", "models", "orders.sql"), repo
 end
 
@@ -442,6 +450,32 @@ test("moves from {% for %} to {% endfor %}, past the {% else %} of an if inside"
   eq(vim.api.nvim_win_get_cursor(0)[1], row_of(buf, "{% endfor"), "% from {% for %}")
 end)
 
+test("goes from anywhere in a ref() to its model with gf, through the project's model-paths and packages", function()
+  local model = "transform/marts/payments.sql"
+  local line = "select * from {{ ref('stg_payments') }} join {{ ref('pkg', 'pkg_orders') }}"
+  for what, config in pairs({
+    flow = 'name: p\nmodel-paths: ["staging", "transform"]  # not models/',
+    block = "name: p\nmodel-paths:\n  - 'staging'\n  - transform\nprofile: p",
+  }) do
+    local project = tmpdir()
+    write_files(project, {
+      ["dbt_project.yml"] = config,
+      [model] = line,
+      ["transform/staging/stg_payments.sql"] = "select 1",
+      ["dbt_packages/pkg/models/pkg_orders.sql"] = "select 1",
+    })
+    for token, want in pairs({
+      ["ref('stg"] = "transform/staging/stg_payments.sql",
+      ["pkg',"] = "dbt_packages/pkg/models/pkg_orders.sql",
+    }) do
+      local buf = open(vim.fs.joinpath(project, model))
+      vim.api.nvim_win_set_cursor(0, pos(buf, line, token))
+      vim.cmd("normal! gf")
+      eq(vim.fs.relpath(project, vim.api.nvim_buf_get_name(0)), want, ("%s: gf on %s"):format(what, token))
+    end
+  end
+end)
+
 -- A real client of an in-process server, so attaching it runs the plugin's
 -- LspAttach autocmd.
 local function yaml_client(name, settings, server_name)
@@ -543,8 +577,7 @@ test("reports healthy, and checks the dbt language server only once it's enabled
   -- Real dbt v2 exits 0 from `dbt lsp --help`, and dbt-core 1.x exits 2.
   local function fake_exe(rel, code)
     local path = vim.fs.joinpath(dir, rel)
-    vim.fn.mkdir(vim.fs.dirname(path), "p")
-    vim.fn.writefile({ "#!/bin/sh", "exit " .. code }, path)
+    write_files(dir, { [rel] = "#!/bin/sh\nexit " .. code })
     vim.fn.setfperm(path, "rwxr-xr-x")
     return path
   end
