@@ -93,7 +93,10 @@ changed in these ways so that it parses:
   loop's `{% else %}` included, is parsed separately, so it gets SQL's colour
   only where it is valid SQL on its own.
 
-Other Jinja filetypes get no SQL.
+dbt's own functions and context variables, such as `ref`, `config`, `this`,
+and `target`, are highlighted as `@function.builtin` and `@variable.builtin`.
+
+Other Jinja filetypes get neither.
 
                                                               *dbt-ft-folding*
 Folding ~

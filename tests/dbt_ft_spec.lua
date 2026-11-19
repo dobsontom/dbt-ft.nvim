@@ -81,6 +81,19 @@ local function has_capture(buf, text, token, want)
   assert(vim.list_contains(got, want), ("%s on %q: no %s in %s"):format(token, text, want, vim.inspect(got)))
 end
 
+---The capture that shows: the last one at the highest priority.
+local function top(buf, text, token)
+  local at = pos(buf, text, token)
+  local best, highest = nil, -math.huge
+  for _, c in ipairs(vim.treesitter.get_captures_at_pos(buf, at[1] - 1, at[2])) do
+    local priority = tonumber(c.metadata.priority) or 100
+    if priority >= highest then
+      best, highest = c.lang .. ":" .. c.capture, priority
+    end
+  end
+  return best
+end
+
 ---Runs Lua in a fresh Neovim with this suite's runtimepath, and returns its
 ---process without waiting for it. Extra arguments go last, where a `--cmd`
 ---still runs first.
@@ -99,7 +112,7 @@ local function nvim(lua, ...)
   })
 end
 
-test("turns off with vim.g.loaded_dbt_ft, but keeps Jinja templates parsing", function()
+test("turns off with vim.g.loaded_dbt_ft, but keeps Jinja templates parsing and highlighting", function()
   local model = vim.fs.joinpath(fixtures, "project", "models", "orders.sql")
   local template = vim.fs.joinpath(fixtures, "template.jinja")
   local function state(...)
@@ -109,7 +122,10 @@ test("turns off with vim.g.loaded_dbt_ft, but keeps Jinja templates parsing", fu
         vim.filetype.match({ filename = %q }),
         vim.treesitter.language.get_lang("dbt"),
         vim.fn.exists("#dbt-ft.yaml#LspAttach"),
-        (pcall(function() vim.treesitter.get_parser():parse(true) end)),
+        (pcall(function()
+          local tree = vim.treesitter.get_parser():parse(true)[1]
+          for _ in vim.treesitter.query.get("jinja", "highlights"):iter_captures(tree:root(), 0) do end
+        end)),
       }))]]):format(template, model),
       ...
     )
@@ -118,7 +134,7 @@ test("turns off with vim.g.loaded_dbt_ft, but keeps Jinja templates parsing", fu
   eq(
     { off = off:wait().stdout, on = on:wait().stdout },
     { off = '["sql","dbt",0,true]', on = '["dbt","jinja",1,true]' },
-    "filetype, parser, YAML hook, and a template's parse"
+    "filetype, parser, YAML hook, and a template's parse and highlights"
   )
 end)
 
@@ -184,14 +200,30 @@ end
 test("gives SQL only a call's name, which keeps Jinja's colour", function()
   local buf = open("project/models/order_payments.sql", true)
   sql_parses(buf, "a call's arguments or package")
-  local at = pos(buf, "generate_surrogate_key", "generate_surrogate_key")
-  local above
-  for _, c in ipairs(vim.treesitter.get_captures_at_pos(buf, at[1] - 1, at[2])) do
-    if tonumber(c.metadata.priority or 100) > 100 then
-      above = c.lang .. ":" .. c.capture
-    end
-  end
-  eq(above, "jinja:function.call", "capture above SQL's")
+  eq(top(buf, "generate_surrogate_key", "generate_surrogate_key"), "jinja:function.call", "capture above SQL's")
+end)
+
+test("highlights dbt's functions and context variables as built-ins, in dbt buffers only", function()
+  local got = {}
+  local buf = open("project/models/order_payments.sql", true)
+  got.model = {
+    ref = top(buf, "{{ ref(", "ref"),
+    project_macro = top(buf, "order_statuses()", "order_statuses"),
+    target = top(buf, "target.name", "target"),
+    member_named_target = top(buf, "node.config.target", "target"),
+  }
+  buf = open("template.jinja", true)
+  vim.treesitter.get_parser(buf):parse()
+  got.template = { ref = top(buf, "{{ ref(", "ref"), target = top(buf, "{{ target", "target") }
+  eq(got, {
+    model = {
+      ref = "jinja:function.builtin",
+      project_macro = "jinja:function.call",
+      target = "jinja:variable.builtin",
+      member_named_target = "jinja:variable.member",
+    },
+    template = { ref = "jinja:function.call", target = "jinja:variable" },
+  }, "top capture")
 end)
 
 test("gives SQL an inline if's first operand", function()

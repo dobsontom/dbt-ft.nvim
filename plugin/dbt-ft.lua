@@ -1,12 +1,22 @@
--- Every Jinja filetype shares the `jinja` queries, so this keeps the SQL
--- injection to dbt buffers. It's a predicate rather than a directive so that in
--- other Jinja buffers a match stops here, before any text is read.
-vim.treesitter.query.add_predicate("dbt-sql?", function(match, _, source, pred)
+-- Every Jinja filetype shares the `jinja` queries, so the predicates below keep
+-- dbt-ft.nvim's additions to dbt buffers.
+local function in_dbt(source)
   -- Not vim.bo, which takes over twice as long, and this runs for every match.
-  if type(source) ~= "number" or vim.api.nvim_get_option_value("filetype", { buf = source }) ~= "dbt" then
+  return type(source) == "number" and vim.api.nvim_get_option_value("filetype", { buf = source }) == "dbt"
+end
+
+-- A predicate rather than a directive so that in other Jinja buffers a match
+-- stops here, before any text is read.
+vim.treesitter.query.add_predicate("dbt-sql?", function(match, _, source, pred)
+  if not in_dbt(source) then
     return false
   end
+  ---@cast source integer
   return require("dbt-ft.injection").renders_sql(match[pred[2]][1], source)
+end, { force = true })
+
+vim.treesitter.query.add_predicate("dbt?", function(_, _, source)
+  return in_dbt(source)
 end, { force = true })
 
 vim.treesitter.query.add_directive("dbt-sql-range!", function(match, _, source, pred, metadata)

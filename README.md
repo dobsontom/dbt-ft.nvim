@@ -17,6 +17,8 @@ There are no commands and no setup function.
 - `.sql` files in a dbt project get the `dbt` filetype, except dbt's compiled output in `target/`.
 - The SQL around the Jinja tags, and each `{{ }}` expression, go to the SQL parser as one document,
   so `from {{ ref('orders') }} where` parses and highlights as SQL.
+- dbt's functions and context variables, such as `ref`, `config`, `this`, and `target`, highlight as
+  built-ins, so they stand out from your own macros.
 - With Tree-sitter folding and indenting on, Jinja blocks fold, and SQL keeps its folds and indents.
 - The indent and `'textwidth'` follow the project's SQLFluff config, with dbt Labs' four spaces
   where it sets no indent. A project's EditorConfig overrides both.
