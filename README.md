@@ -67,7 +67,10 @@ vim.api.nvim_create_autocmd("FileType", {
 ```
 
 Language servers, formatters, and linters set up for `sql` don't run on `dbt` buffers, which keeps
-the ones that can't read Jinja off your models. Add `dbt` to those that can.
+the ones that can't read Jinja off your models. Add `dbt` to those that can. See
+[`:help dbt-ft-formatting`](doc/dbt-ft.txt) for conform.nvim and nvim-lint, as SQLFluff's `dbt`
+templater can't read the buffer, and [`:help dbt-ft-snippets`](doc/dbt-ft.txt) for blink.cmp and
+LuaSnip.
 
 The dbt language server, `dbt lsp`, comes with dbt v2, not dbt-core 1.x. With
 [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig), whose `dbt` config already covers the

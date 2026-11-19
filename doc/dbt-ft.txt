@@ -201,6 +201,57 @@ a client named `yamlls`, as nvim-lspconfig calls it.
 Set `vim.g.dbt_ft_yaml_schemas = false`, or `0`, to leave
 yaml-language-server's schema mappings alone.
 
+                                                           *dbt-ft-formatting*
+Formatters and linters ~
+SQLFluff's `dbt` templater won't read a model from stdin, which is how
+conform.nvim and nvim-lint pass it the buffer. It also skips files dbt
+doesn't know, such as the copy of the buffer conform.nvim formats.
+
+With conform.nvim, format with sqlfmt, which formats Jinja without rendering
+it: >lua
+    require("conform").setup({
+      formatters_by_ft = { dbt = { "sqlfmt" } },
+    })
+<
+With the `dbt` templater, nvim-lint's own `sqlfluff` shows no problems in a
+model at all, as nvim-lint doesn't read SQLFluff's stdin error. Add a linter
+that lints the saved file instead, and lint on write: >lua
+    local lint = require("lint")
+    local sqlfluff_dbt = vim.tbl_extend("force", lint.linters.sqlfluff, {
+      stdin = false,
+      args = { "lint", "--format=json" },
+    })
+    lint.linters.sqlfluff_dbt = sqlfluff_dbt
+    lint.linters_by_ft.dbt = { "sqlfluff_dbt" }
+    vim.api.nvim_create_autocmd("BufWritePost", {
+      callback = function()
+        lint.try_lint()
+      end,
+    })
+<
+Each lint compiles the dbt project, so the results can take seconds to
+appear. If you already lint on write, add only the linter and its
+`linters_by_ft` entry.
+
+SQLFluff's `jinja` templater reads the buffer, but needs your packages'
+macros set up in `.sqlfluff`.
+
+                                                             *dbt-ft-snippets*
+Snippets ~
+Snippets written for `sql` don't load in `dbt` buffers either. With
+blink.cmp, extend `dbt` with them: >lua
+    require("blink.cmp").setup({
+      sources = {
+        providers = {
+          snippets = { opts = { extended_filetypes = { dbt = { "sql" } } } },
+        },
+      },
+    })
+<
+With LuaSnip: >lua
+    require("luasnip").filetype_extend("dbt", { "sql" })
+<
+
 ==============================================================================
 HEALTH                                                         *dbt-ft-health*
 
