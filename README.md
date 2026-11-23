@@ -87,6 +87,10 @@ See [`:help dbt-ft-lsp`](doc/dbt-ft.txt) for setting it up without nvim-lspconfi
 
 Run `:checkhealth dbt-ft` to check the setup.
 
+For the whole dbt setup around it, with the language server, YAML schemas, formatting, linting, and
+configs for `vim.pack` and LazyVim, see
+[The ultimate dbt setup guide for Neovim](https://medium.com/@dobs.tx/the-ultimate-dbt-setup-guide-for-neovim-in-2026-26865d44cb11).
+
 ## Options
 
 | Option                        | Set it to            | To                                                      |
