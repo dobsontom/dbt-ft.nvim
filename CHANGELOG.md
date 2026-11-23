@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.3.0...v1.4.0) (2026-11-23)
+
+
+### Features
+
+* **yaml:** map dbt's schemas onto the YAML in analyses, tests, functions, and checks, and wherever dbt_project.yml's *-paths point ([64e57a1](https://github.com/dobsontom/dbt-ft.nvim/commit/64e57a10d8e0245ab181d9eb949273b994ca718e))
+
+
+### Bug Fixes
+
+* **gf:** read a model-paths list written without indentation ([b6f6c96](https://github.com/dobsontom/dbt-ft.nvim/commit/b6f6c96e4e53e2c6b20cd1701626e8e865562a89))
+
 ## [1.3.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.2.0...v1.3.0) (2026-11-19)
 
 
