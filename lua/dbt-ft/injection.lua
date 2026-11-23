@@ -49,16 +49,16 @@ local function expression_range(expression, buf)
     -- itself, stands in for it.
     expression = assert(expression:named_child(0))
   end
-  local srow, scol, erow, ecol = expression:range()
   local name = callee(expression, buf)
   if name then
     -- A call's arguments are Jinja, such as a list SQL can't parse, so SQL
     -- gets only the call's name, without its package so that in
     -- `amount_{{ x.f() }}` it joins the name before it as one identifier.
+    local srow, scol = expression:start()
     local bare = name:match("[%w_]*$")
     return { srow, scol + #name - #bare, srow, scol + #name }
   elseif inline_if then
-    return { srow, scol, erow, ecol }
+    return { expression:range() }
   end
 end
 
