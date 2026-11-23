@@ -64,7 +64,7 @@ DETECTION                                                   *dbt-ft-detection*
 
 A `.sql` file gets the `dbt` filetype when a `dbt_project.yml` file sits in
 its directory or any directory above it. That covers models, macros, tests,
-snapshots, analyses, and packages under `dbt_packages/`. dbt's compiled
+snapshots, analyses, and installed packages. dbt's compiled
 output under the project's `target/` stays `sql`, as does any `.sql` file
 outside a project.
 A buffer named by a URL, such as a `fugitive://` copy of a model, is judged by
@@ -170,9 +170,10 @@ With |matchit|, |%| moves between the tags of a Jinja block:
 Going to a model ~
 |gf| on a `ref()` opens the model it names, with the cursor anywhere in the
 call, even on `ref` or a package name. It looks in the directories
-`dbt_project.yml` lists under `model-paths`, or `models` where it lists none,
-then in each package's `models` under `dbt_packages`. |:find| takes a model's
-name the same way.
+`dbt_project.yml` lists under `model-paths`, or its older name `source-paths`,
+or `models` where it lists neither. Then it looks in each package's `models`
+under the `packages-install-path` directory, `dbt_packages` by default.
+|:find| takes a model's name the same way.
 
 Only models are reached, as sources are declared in YAML and macros sit in
 files named for something else. A versioned model's `ref('orders', v=2)`
@@ -217,7 +218,8 @@ and the YAML in the directories `dbt_project.yml` lists under
 `analysis-paths`, `check-paths`, `function-paths`, `macro-paths`,
 `model-paths`, `seed-paths`, `snapshot-paths`, and `test-paths`, or dbt's
 default for each where it lists none. The defaults are those of dbt-core and
-dbt v2 together, so set a key to narrow it.
+dbt v2 together, so set a key to narrow it. `data-paths` and `source-paths`,
+the names `seed-paths` and `model-paths` had before dbt 1.0, count as those.
 
 The server is known by the name it reports, which it does from 1.20.0, or by
 a client named `yamlls`, as nvim-lspconfig calls it.

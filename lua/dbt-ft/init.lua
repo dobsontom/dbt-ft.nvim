@@ -14,6 +14,10 @@ local source_paths = {
   ["test-paths"] = { "tests" },
 }
 
+-- Names from before dbt 1.0, which dbt-core still reads. dbt 2.0 reads only
+-- `data-paths`.
+local renamed = { ["data-paths"] = "seed-paths", ["source-paths"] = "model-paths" }
+
 ---@param path string
 ---@return string
 local function local_path(path)
@@ -45,12 +49,18 @@ end
 
 ---@param root string
 ---@return table<string, string[]> paths each source `*-paths` key and its directories
+---@return string packages the directory dbt installs packages into
 function M.paths(root)
   local ok, lines = pcall(vim.fn.readfile, vim.fs.joinpath(root, "dbt_project.yml"))
-  local found, list = {}, nil
+  local found, list, packages = {}, nil, "dbt_packages"
   for _, line in ipairs(ok and lines or {}) do
     line = line:gsub("^#.*", ""):gsub("%s#.*", "")
     local key, value = line:match("^([%w%-]+):%s*(.-)%s*$")
+    key = renamed[key] or key
+    local install = key == "packages-install-path" and unquote(value)
+    if install and install ~= "" then
+      packages = install
+    end
     local item = line:match("^%s*%-%s*(.-)%s*$")
     if source_paths[key] then
       list = {}
@@ -69,7 +79,7 @@ function M.paths(root)
       found[key] = vim.list_slice(default)
     end
   end
-  return found
+  return found, packages
 end
 
 ---@param path string

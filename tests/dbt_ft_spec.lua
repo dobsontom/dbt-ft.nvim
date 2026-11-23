@@ -478,21 +478,26 @@ end)
 test("goes from anywhere in a ref() to its model with gf, through the project's model-paths and packages", function()
   local model = "transform/marts/payments.sql"
   local line = "select * from {{ ref('stg_payments') }} join {{ ref('pkg', 'pkg_orders') }}"
-  for what, config in pairs({
-    flow = 'name: p\nmodel-paths: ["staging", "transform"]  # not models/',
-    block = "name: p\nmodel-paths:\n  - 'staging'\n  - transform\nprofile: p",
-    indentless = "name: p\nmodel-paths:\n- staging\n- transform\nprofile: p",
+  for what, case in pairs({
+    flow = { 'name: p\nmodel-paths: ["staging", "transform"]  # not models/', "dbt_packages" },
+    block = { "name: p\nmodel-paths:\n  - 'staging'\n  - transform\nprofile: p", "dbt_packages" },
+    indentless = { "name: p\nmodel-paths:\n- staging\n- transform\nprofile: p", "dbt_packages" },
+    ["pre-1.0 key, own packages directory"] = {
+      'name: p\nsource-paths: ["staging", "transform"]\npackages-install-path: "vendor"',
+      "vendor",
+    },
   }) do
+    local config, packages = unpack(case)
     local project = tmpdir()
     write_files(project, {
       ["dbt_project.yml"] = config,
       [model] = line,
       ["transform/staging/stg_payments.sql"] = "select 1",
-      ["dbt_packages/pkg/models/pkg_orders.sql"] = "select 1",
+      [packages .. "/pkg/models/pkg_orders.sql"] = "select 1",
     })
     for token, want in pairs({
       ["ref('stg"] = "transform/staging/stg_payments.sql",
-      ["pkg',"] = "dbt_packages/pkg/models/pkg_orders.sql",
+      ["pkg',"] = packages .. "/pkg/models/pkg_orders.sql",
     }) do
       local buf = open(vim.fs.joinpath(project, model))
       vim.api.nvim_win_set_cursor(0, pos(buf, line, token))
@@ -562,7 +567,7 @@ end)
 test("maps the YAML under the directories dbt_project.yml lists, and dbt's defaults for the rest", function()
   local project = tmpdir()
   write_files(project, {
-    ["dbt_project.yml"] = 'name: p\nmodel-paths:\n  - transform\nseed-paths: ["data/"]\nprofile: p',
+    ["dbt_project.yml"] = 'name: p\nmodel-paths:\n  - transform\ndata-paths: ["data/"]\nprofile: p',
     ["transform/schema.yml"] = "version: 2",
   })
   local client, sent = yaml_client("yamlls", {})

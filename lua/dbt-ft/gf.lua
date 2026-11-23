@@ -3,8 +3,9 @@ local M = {}
 ---@param root string
 ---@return string
 function M.path(root)
-  local dirs = require("dbt-ft").paths(root)["model-paths"]
-  dirs[#dirs + 1] = "dbt_packages/*/models"
+  local paths, packages = require("dbt-ft").paths(root)
+  local dirs = paths["model-paths"]
+  dirs[#dirs + 1] = vim.fs.joinpath(packages, "*/models")
   for i, dir in ipairs(dirs) do
     dirs[i] = vim.fn.escape(vim.fs.joinpath(root, dir), "\\ ,") .. "/**"
   end
