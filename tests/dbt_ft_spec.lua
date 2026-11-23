@@ -481,6 +481,7 @@ test("goes from anywhere in a ref() to its model with gf, through the project's 
   for what, config in pairs({
     flow = 'name: p\nmodel-paths: ["staging", "transform"]  # not models/',
     block = "name: p\nmodel-paths:\n  - 'staging'\n  - transform\nprofile: p",
+    indentless = "name: p\nmodel-paths:\n- staging\n- transform\nprofile: p",
   }) do
     local project = tmpdir()
     write_files(project, {

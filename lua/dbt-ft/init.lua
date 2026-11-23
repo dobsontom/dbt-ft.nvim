@@ -51,7 +51,7 @@ function M.paths(root)
   for _, line in ipairs(ok and lines or {}) do
     line = line:gsub("^#.*", ""):gsub("%s#.*", "")
     local key, value = line:match("^([%w%-]+):%s*(.-)%s*$")
-    local item = line:match("^%s+%-%s*(.-)%s*$")
+    local item = line:match("^%s*%-%s*(.-)%s*$")
     if source_paths[key] then
       list = {}
       found[key] = list
