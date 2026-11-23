@@ -2,15 +2,25 @@ local M = {}
 
 local url = "https://raw.githubusercontent.com/dbt-labs/dbt-jsonschema/main/schemas/latest_fusion/%s-latest-fusion.json"
 
--- SchemaStore's patterns for dbt's schemas.
-local files = {
-  catalogs = { "catalogs" },
-  dbt_project = { "dbt_project" },
-  dbt_yml_files = { "macros/**/*", "models/**/*", "seeds/**/*", "snapshots/**/*" },
-  dependencies = { "dependencies" },
-  packages = { "packages" },
-  selectors = { "selectors" },
-}
+---@param root string
+---@return table<string, string[]> files each schema's file stems, relative to root
+local function files(root)
+  local yml_files = {}
+  for _, dirs in pairs(require("dbt-ft").paths(root)) do
+    for _, dir in ipairs(dirs) do
+      yml_files[#yml_files + 1] = vim.fs.joinpath(dir, "**/*")
+    end
+  end
+  return {
+    dbt_yml_files = yml_files,
+    -- SchemaStore's patterns for the rest.
+    catalogs = { "catalogs" },
+    dbt_project = { "dbt_project" },
+    dependencies = { "dependencies" },
+    packages = { "packages" },
+    selectors = { "selectors" },
+  }
+end
 
 ---@param client vim.lsp.Client
 ---@param buf integer
@@ -31,7 +41,7 @@ function M.attach(client, buf)
   settings.yaml.schemas = settings.yaml.schemas or {}
   local schemas = settings.yaml.schemas
   local added = false
-  for schema, stems in pairs(files) do
+  for schema, stems in pairs(files(root)) do
     local key = url:format(schema)
     local mapped = schemas[key]
     mapped = type(mapped) == "string" and { mapped } or mapped or {}

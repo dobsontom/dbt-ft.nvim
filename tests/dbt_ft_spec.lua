@@ -536,21 +536,53 @@ local function yaml_client(name, settings, server_name)
   return assert(vim.lsp.get_client_by_id(id)), sent
 end
 
+local yml_files_schema =
+  "https://raw.githubusercontent.com/dbt-labs/dbt-jsonschema/main/schemas/latest_fusion/dbt_yml_files-latest-fusion.json"
+
 test("maps a project's YAML to dbt's schemas when yamlls attaches", function()
   local project = vim.fs.joinpath(fixtures, "project")
-  local models =
-    "https://raw.githubusercontent.com/dbt-labs/dbt-jsonschema/main/schemas/latest_fusion/dbt_yml_files-latest-fusion.json"
-  local packages = models:gsub("dbt_yml_files", "packages")
-  local client, sent = yaml_client("yamlls", { yaml = { schemas = { [models] = "**/*dbt*/models/**/*.yml" } } })
+  local packages = yml_files_schema:gsub("dbt_yml_files", "packages")
+  local client, sent =
+    yaml_client("yamlls", { yaml = { schemas = { [yml_files_schema] = "**/*dbt*/models/**/*.yml" } } })
   vim.lsp.buf_attach_client(open("project/models/schema.yml"), client.id)
   eq(#sent, 1, "notifications")
   local schemas = sent[1].yaml.schemas
-  eq(schemas[models][1], "**/*dbt*/models/**/*.yml", "the mapping yamlls had")
-  assert(vim.list_contains(schemas[models], project .. "/models/**/*.yml"), vim.inspect(schemas[models]))
+  eq(schemas[yml_files_schema][1], "**/*dbt*/models/**/*.yml", "the mapping yamlls had")
+  assert(
+    vim.list_contains(schemas[yml_files_schema], project .. "/models/**/*.yml"),
+    vim.inspect(schemas[yml_files_schema])
+  )
   assert(vim.list_contains(schemas[packages], project .. "/packages.yml"), vim.inspect(schemas[packages]))
   eq(client.settings, sent[1], "the settings the client keeps")
   vim.lsp.buf_attach_client(open("project/models/other.yml"), client.id)
   eq(#sent, 1, "notifications after a second file in the project")
+end)
+
+test("maps the YAML under the directories dbt_project.yml lists, and dbt's defaults for the rest", function()
+  local project = tmpdir()
+  write_files(project, {
+    ["dbt_project.yml"] = 'name: p\nmodel-paths:\n  - transform\nseed-paths: ["data/"]\nprofile: p',
+    ["transform/schema.yml"] = "version: 2",
+  })
+  local client, sent = yaml_client("yamlls", {})
+  vim.lsp.buf_attach_client(open(vim.fs.joinpath(project, "transform/schema.yml")), client.id)
+  local got = sent[1].yaml.schemas[yml_files_schema]
+  table.sort(got)
+  local want = {}
+  for _, dir in ipairs({
+    "analyses",
+    "analysis",
+    "checks",
+    "data",
+    "functions",
+    "macros",
+    "snapshots",
+    "tests",
+    "transform",
+  }) do
+    vim.list_extend(want, { ("%s/%s/**/*.yaml"):format(project, dir), ("%s/%s/**/*.yml"):format(project, dir) })
+  end
+  eq(got, want, "dbt_yml_files mappings")
 end)
 
 test("knows yaml-language-server by the name it reports, whatever the client is called", function()

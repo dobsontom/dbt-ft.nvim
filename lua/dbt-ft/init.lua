@@ -1,5 +1,19 @@
 local M = {}
 
+-- The directories dbt reads property YAML from, with defaults as of dbt-core
+-- 1.12.4 and dbt 2.0.11. Only dbt 2.0 has check-paths, or reads `analysis`
+-- for an unset analysis-paths.
+local source_paths = {
+  ["analysis-paths"] = { "analysis", "analyses" },
+  ["check-paths"] = { "checks" },
+  ["function-paths"] = { "functions" },
+  ["macro-paths"] = { "macros" },
+  ["model-paths"] = { "models" },
+  ["seed-paths"] = { "seeds" },
+  ["snapshot-paths"] = { "snapshots" },
+  ["test-paths"] = { "tests" },
+}
+
 ---@param path string
 ---@return string
 local function local_path(path)
@@ -21,6 +35,41 @@ function M.root(path)
   -- Compiled output holds a directory of that name, so only a file counts.
   local project = vim.fs.find("dbt_project.yml", { upward = true, type = "file", path = vim.fs.dirname(path) })[1]
   return project and vim.fs.dirname(project)
+end
+
+---@param item string
+---@return string
+local function unquote(item)
+  return (vim.trim(item):gsub("^(['\"])(.*)%1$", "%2"))
+end
+
+---@param root string
+---@return table<string, string[]> paths each source `*-paths` key and its directories
+function M.paths(root)
+  local ok, lines = pcall(vim.fn.readfile, vim.fs.joinpath(root, "dbt_project.yml"))
+  local found, list = {}, nil
+  for _, line in ipairs(ok and lines or {}) do
+    line = line:gsub("^#.*", ""):gsub("%s#.*", "")
+    local key, value = line:match("^([%w%-]+):%s*(.-)%s*$")
+    local item = line:match("^%s+%-%s*(.-)%s*$")
+    if source_paths[key] then
+      list = {}
+      found[key] = list
+      for each in value:gsub("^%[(.*)%]$", "%1"):gmatch("[^,]+") do
+        list[#list + 1] = unquote(each)
+      end
+    elseif list and item and not key then
+      list[#list + 1] = unquote(item)
+    elseif line:match("^%S") then
+      list = nil
+    end
+  end
+  for key, default in pairs(source_paths) do
+    if not found[key] or #found[key] == 0 then
+      found[key] = vim.list_slice(default)
+    end
+  end
+  return found
 end
 
 ---@param path string
