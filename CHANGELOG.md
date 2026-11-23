@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.4.0...v1.4.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* read dbt's pre-1.0 path keys and packages-install-path ([62e0439](https://github.com/dobsontom/dbt-ft.nvim/commit/62e0439e3fb44910e8f740f8833c401fbb900e23))
+
 ## [1.4.0](https://github.com/dobsontom/dbt-ft.nvim/compare/v1.3.0...v1.4.0) (2026-11-23)
 
 
