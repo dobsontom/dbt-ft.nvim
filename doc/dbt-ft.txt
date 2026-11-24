@@ -166,6 +166,21 @@ With |matchit|, |%| moves between the tags of a Jinja block:
   `materialization`, `raw`, `snapshot`, `test`, and `with`, and its `end`
   tag.
 
+                                                          *dbt-ft-textobjects*
+Text objects ~
+Jinja blocks have Tree-sitter text objects, which nvim-treesitter-textobjects
+and mini.ai's `gen_spec.treesitter()` select from anywhere in the block, the
+SQL in it included:
+- `@block.outer` and `@block.inner` for any Jinja block. The inner one is
+  everything between the opening and closing tags, as with Vim's |it|.
+- `@function.outer` and `@function.inner` for a `{% macro %}`.
+- `@loop.outer` and `@loop.inner` for a `{% for %}`.
+- `@conditional.outer` and `@conditional.inner` for an `{% if %}`, with its
+  `elif` and `else`.
+- `@comment.outer` for a Jinja comment.
+
+Neither plugin maps keys to these by itself, so map them as its docs say.
+
                                                                    *dbt-ft-gf*
 Going to a model ~
 |gf| on a `ref()` opens the model it names, with the cursor anywhere in the

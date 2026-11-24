@@ -25,6 +25,8 @@ There are no commands and no setup function.
 - `gc` uses `{# #}` on a line that starts with a Jinja tag, indented or not, and `--` elsewhere.
 - Enter or `o` on a `--` comment line starts the new line with `--` too.
 - `%` moves between a Jinja block's tags, such as `{% if %}`, `{% else %}`, and `{% endif %}`.
+- Jinja blocks have text objects for nvim-treesitter-textobjects and mini.ai, such as `@block.inner`
+  for everything between a block's tags.
 - `gf` on a `ref()` opens the model it names.
 - With yaml-language-server, a project's YAML gets dbt's schemas for validation, completion, and
   hover, even when the project's directory doesn't have `dbt` in its name.

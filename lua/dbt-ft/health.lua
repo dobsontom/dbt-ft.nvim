@@ -28,7 +28,7 @@ local function check_treesitter()
     return
   end
 
-  for _, name in ipairs({ "folds", "highlights", "indents", "injections" }) do
+  for _, name in ipairs({ "folds", "highlights", "indents", "injections", "textobjects" }) do
     local ok, err = pcall(vim.treesitter.query.get, "jinja", name)
     if ok then
       health.ok(("`jinja` %s query loads"):format(name))

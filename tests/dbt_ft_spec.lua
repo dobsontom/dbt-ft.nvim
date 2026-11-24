@@ -325,6 +325,31 @@ test("has its SQL folds as soon as a model opens", function()
   assert(folded, "no fold holds the CTE's select")
 end)
 
+test("gives text objects a Jinja block's body, and the whole block", function()
+  local buf = open("project/macros/grant_select.sql", true)
+  local tree = vim.treesitter.get_parser(buf):parse()[1]
+  local query = assert(vim.treesitter.query.get("jinja", "textobjects"))
+  local ranges = {}
+  for _, match in query:iter_matches(tree:root(), buf) do
+    for id, nodes in pairs(match) do
+      local sr, sc = nodes[1]:range()
+      local _, _, er, ec = nodes[#nodes]:range()
+      local name = query.captures[id]
+      ranges[name] = ranges[name] or {}
+      table.insert(ranges[name], { sr, sc, er, ec })
+    end
+  end
+  for _, list in pairs(ranges) do
+    table.sort(list, function(a, b)
+      return vim.inspect(a) < vim.inspect(b)
+    end)
+  end
+  eq(ranges["function.inner"], { { 0, 30, 6, 0 } }, "function.inner")
+  eq(ranges["function.outer"], { { 0, 0, 6, 14 } }, "function.outer")
+  eq(ranges["block.inner"], { { 0, 30, 6, 0 }, { 1, 34, 5, 4 } }, "block.inner")
+  eq(ranges["block.outer"], { { 0, 0, 6, 14 }, { 1, 4, 5, 15 } }, "block.outer")
+end)
+
 test("indents dbt buffers by SQL's rules and leaves other Jinja to autoindent", function()
   local indent = require("nvim-treesitter.indent")
   local buf = open("project/models/orders.sql", true)
